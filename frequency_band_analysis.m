@@ -20,14 +20,72 @@ cln_evns = stim_evns(gd_msk);
 if strcmp(task, 'Naming')
     typ_idx = 2;
     focus_typ = 'poscat';
+    id = cellfun(@(x) str2double(x(typ_idx)), cln_split);
+    keyset = unique(id);
+    for ii = 1:length(cln_split)
+        ecode = cln_split{ii};
+        if str2double(ecode{2}) < 3
+            p12 = [p12; cln_evn_typ{ii}];
+        elseif str2double(ecode{2}) > 2 && str2double(ecode{2}) < 5
+            p34 = [p34; cln_evn_typ{ii}];
+        elseif str2double(ecode{2}) > 4
+            p56 = [p56; cln_evn_typ{ii}];
+        end
+        
+        if str2double(ecode{2}) < 4
+            p13 = [p13; cln_evn_typ{ii}];
+        else
+            p46 = [p46; cln_evn_typ{ii}];
+        end
+    end
 end
+
+% Make a dictionary type structure of all different event groupings?
 
 if strcmp(task, 'Stroop')
-    typ_idx = 3;
     focus_typ = 'congruency';
+    color_evn_typ = {};
+    space_evn_typ = {};
+    cCw_nm = {}; cIw_nm = {}; cCs_nm = {}; cIs_nm = {};
+    sCw_nm = {}; sIw_nm = {}; sCs_nm = {}; sIs_nm = {};
+    m = 0;
+    for ii = 1:length(cln_split)
+        ecode = cln_split{ii};
+        if str2double(ecode{1}) == 1
+            continue
+        end        
+        if mod(str2double(ecode{1}), 2)
+            color_evn_typ = [color_evn_typ; cln_evn_typ{ii}];
+            if isequal(ecode{3},'C')
+                cCw_nm = [cCw_nm; cln_evn_typ{ii}]; % Split these on first 20 and second 20
+            end 
+            if isequal(ecode{3},'I') 
+                cIw_nm = [cIw_nm; cln_evn_typ{ii}];
+            end 
+            if isequal(ecode{4},'C')
+                cCs_nm = [cCs_nm; cln_evn_typ{ii}];
+            end
+            if isequal(ecode{4},'I')
+                cIs_nm = [cIs_nm; cln_evn_typ{ii}];     
+            end
+        else
+            space_evn_typ = [space_evn_typ; cln_evn_typ{ii}];
+            if isequal(ecode{3},'C')
+                sCw_nm = [sCw_nm; cln_evn_typ{ii}];
+            end 
+            if isequal(ecode{3},'I') 
+                sIw_nm = [sIw_nm; cln_evn_typ{ii}];
+            end 
+            if isequal(ecode{4},'C')
+                sCs_nm = [sCs_nm; cln_evn_typ{ii}];
+            end
+            if isequal(ecode{4},'I')
+                sIs_nm = [sIs_nm; cln_evn_typ{ii}];     
+            end
+        end
+    end
 end
 
-    
 ref = EEG.info.ref;
 
 %% FBA
@@ -105,29 +163,30 @@ while true
     if isempty(TvD)
         prompt('no results', study, lock)
         continue
-    else
+    end
 
-        disp('  ')
-        disp('Focused FBA:')
+    disp('  ')
+    disp('Focused FBA:')
 
-        % find significant channels, make stucture that only contains sig dat
-        chansSIG = string(TvD(:,2));
-        chansALL = string(glab_r)';
-        gdat_SIG = gdat_r(ismember(chansALL, chansSIG), :);
-        EEG_sig = make_EEG(gdat_SIG, TvD(:,2), fs, cln_evns, cln_evn_typ, id, -1, [SUBID '_' task], task, study, ref, lock);
+    % find significant channels, make stucture that only contains sig dat
+    chansSIG = string(TvD(:,2));
+    chansALL = string(glab_r)';
+    gdat_SIG = gdat_r(ismember(chansALL, chansSIG), :);
+    EEG_sig = make_EEG(gdat_SIG, TvD(:,2), fs, cln_evns, cln_evn_typ, id, -1, [SUBID '_' task], task, study, ref, lock);
 
-        % Display event categorys to sort by
-        prompt('focus evns', task, focus_typ, keyset)
+    % Display event categorys to sort by
+    prompt('focus evns', task, focus_typ, keyset)
 
-        k = 1;
-        % Group by event
-        while k <= length(sub_keyst)  
+    k = 1;
+    % Group by event
+    for gsize = [2 3]
+        while k <= length(keyset)
 
             if strcmp(task, 'Naming')
                 if gsize > 1
-                    catn = [keyset{k} '-' num2str(k+gsize-1)];
+                    catn = [keyset(k) '-' num2str(k+gsize-1)];
                 else
-                    catn = keyset{k};
+                    catn = keyset(k);
                 end
 
                 foc_nm = [focus_typ catn];
@@ -140,7 +199,7 @@ while true
 
             focus_evn_typ = {}; focus_evns = []; focus_resp = [];
             for ii = k:k+gsize-1
-                temp_typ = cln_evn_typ(cellfun(@(x) contains(x, char(keyset(ii))), id));
+                temp_typ = cln_evn_typ(ismember(id, keyset(ii)));
                 temp_evns = cln_evns(ismember(cln_evn_typ, temp_typ));
                 temp_resp = cln_resp(ismember(cln_evn_typ, temp_typ));
 
@@ -210,8 +269,9 @@ while true
         end
         subplot_all(handles, axiis, 4, [lock_pth 'Channel FBA Plots by Category/' study '/Group ' num2str(gsize) '/'])
     end
-
 end
+
+
 
 if user_yn('ret iep?')
     run('iEEG_processor.m')
