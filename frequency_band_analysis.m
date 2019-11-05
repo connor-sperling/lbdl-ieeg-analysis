@@ -14,6 +14,67 @@ cln_resp = res_tm(gd_msk);
 cln_evns = stim_evns(gd_msk);
 
 
+    study = prompt('study');
+    if strcmp(study, 'Q')
+        break
+    end   
+    if isfield(EEG.info, 'study')
+        EEG.info.study = [EEG.info.study {study}];
+    else
+        EEG.info.study = {study};
+    end
+    
+    lock = prompt('lock type');
+    if isfield(EEG.info, 'lock')
+        EEG.info.lock = [EEG.info.lock {lock}];
+    else
+        EEG.info.lock = {lock};
+    end
+
+    %% Frequency band analysis across ALL good events
+    
+    % Create directories for FBA over ALL good events
+    lock_pth = [pth 'analysis/' task '/' ref '/' lock '/'];
+    ALL_pth = [lock_pth 'ALL/'];
+
+    if ~exist([ALL_pth 'Channel events/' study], 'dir')
+        mkdir([ALL_pth 'Channel events/' study]);
+        mkdir([ALL_pth 'plots/' study ' events']);
+        mkdir([ALL_pth 'plots/' study ' fba']);
+        mkdir([ALL_pth 'TvD/']);
+        mkdir([ALL_pth 'figs/' study ' fba']);
+    end
+
+    % event data gathering/filtering
+    d = dir([ALL_pth 'Channel events/' study]);
+    if sum([d.bytes]) > 0
+        ce = user_yn('prep ALL again?', study);
+    else
+        ce = 1;
+    end
+    
+    if ce  
+        prompt('running ALL prep');
+        event_prep(EEG, cln_evns, cln_evn_typ, cln_resp, [ALL_pth 'Channel events/' study '/'], 'ALL')
+    end
+
+    % frequency band analysis
+    ses_TvD = sprintf('%sTvD/%s_TvD.mat', ALL_pth, study);
+    d = dir(ses_TvD);
+    if sum(cellfun(@(x) contains(x, 'mat'), {d.name}))
+        hg = user_yn('fba ALL again?', study, SUBID);
+    else
+        hg = 1;
+    end
+    
+    if hg 
+        prompt('running sigchan')
+        if strcmp(lock, 'Stimulus Locked')
+            sigALL_shadow_s = sig_freq_band(EEG, cln_resp, ALL_pth, 'ALL');
+        else
+            sigALL_shadow_r = sig_freq_band(EEG, cln_resp, ALL_pth, 'ALL');
+        end
+    end
 
     
 % DEFINE FOCUS NAMES FOR EACH TASK TYPE
@@ -50,7 +111,7 @@ if strcmp(task, 'Stroop')
     focus_typ = 'congruency';
     color_idx = 3;
     space_idx = 4;
-
+    
     cCw_beg = {}; cIw_beg = {}; cCs_beg = {}; cIs_beg = {};
     cCw_end = {}; cIw_end = {}; cCs_end = {}; cIs_end = {};
     sCw_beg = {}; sIw_beg = {}; sCs_beg = {}; sIs_beg = {};
@@ -122,80 +183,18 @@ ref = EEG.info.ref;
 
 %% FBA
 
-while true
     
-    study = prompt('study');
-    if strcmp(study, 'Q')
-        break
-    end   
-    if isfield(EEG.info, 'study')
-        EEG.info.study = [EEG.info.study {study}];
-    else
-        EEG.info.study = {study};
-    end
     
-    lock = prompt('lock type');
-    if isfield(EEG.info, 'lock')
-        EEG.info.lock = [EEG.info.lock {lock}];
-    else
-        EEG.info.lock = {lock};
-    end
-
-    %% Frequency band analysis across ALL good events
-    
-    % Create directories for FBA over ALL good events
-    lock_pth = [pth 'analysis/' task '/' ref '/' lock '/'];
-    ALL_pth = [lock_pth 'ALL/'];
-
-    if ~exist([ALL_pth 'Channel events/' study], 'dir')
-        mkdir([ALL_pth 'Channel events/' study]);
-        mkdir([ALL_pth 'plots/' study ' events']);
-        mkdir([ALL_pth 'plots/' study ' fba']);
-        mkdir([ALL_pth 'TvD/']);
-        mkdir([ALL_pth 'figs/' study ' fba']);
-    end
-
-    % event data gathering/filtering
-    d = dir([ALL_pth 'Channel events/' study]);
-    if sum([d.bytes]) > 0
-        ce = user_yn('prep ALL again?', study);
-    else
-        ce = 1;
-    end
-    
-    if ce  
-        prompt('running ALL prep');
-        event_prep(EEG, cln_evns, cln_evn_typ, cln_resp, [ALL_pth 'Channel events/' study '/'], 'ALL')
-    end
-
-    % frequency band analysis
-    ses_TvD = sprintf('%sTvD/%s_TvD.mat', ALL_pth, study);
-    d = dir(ses_TvD);
-    if sum(cellfun(@(x) contains(x, 'mat'), {d.name}))
-        hg = user_yn('fba ALL again?', study, SUBID);
-    else
-        hg = 1;
-    end
-    
-    if hg 
-        prompt('running sigchan')
-        if strcmp(lock, 'Stimulus Locked')
-            sigALL_shadow_s = sig_freq_band(EEG, cln_resp, ALL_pth, 'ALL');
-        else
-            sigALL_shadow_r = sig_freq_band(EEG, cln_resp, ALL_pth, 'ALL');
-        end
-    end
-
 
 
     %% Grouping of Frequency Band Analysis by Category
 
     % Load in TvD
     load(ses_TvD)
-    if isempty(TvD)
-        prompt('no results', study, lock)
-        continue
-    end
+%     if isempty(TvD)
+%         prompt('no results', study, lock)
+%         continue
+%     end
 
     disp('  ')
     disp('Focused FBA:')
@@ -299,7 +298,7 @@ while true
         rmdir([lock_pth sig_flds{ii}], 's')
     end
     subplot_all(handles, axiis, 4, [lock_pth 'Channel FBA Plots by Category/' study '/Group ' num2str(gsize) '/'])
-end
+
 
 
 
