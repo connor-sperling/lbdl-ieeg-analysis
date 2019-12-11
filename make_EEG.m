@@ -1,4 +1,4 @@
-function EEG = make_EEG(dat, lab, srate, evns, evn_typ, evnid, flt, name, task, study, ref, lock)
+function EEG = make_EEG(dat, lab, srate, evns, evn_typ, flt, name, task, study, ref, lock)
 
     EEG.setname = name;
     EEG.info.task = task;
@@ -45,9 +45,6 @@ function EEG = make_EEG(dat, lab, srate, evns, evn_typ, evnid, flt, name, task, 
        EEG.event(ii).bvmknum = ii;
        if ~isempty(evn_typ{ii})
            EEG.event(ii).type = evn_typ{ii};
-           if iscell(evnid)
-               EEG.event(ii).id = evnid{ii};
-           end
            EEG.event(ii).code = 'Stimulus';
            EEG.event(ii).urevent = ii;
        end

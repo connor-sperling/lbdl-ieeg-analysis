@@ -1,4 +1,4 @@
-function all_sdarea = sig_freq_band(EEG, resp, pth, foc_nm)
+function sig_freq_band(EEG, resp, pth, foc_nm)
 
     
     warning('off')
@@ -10,25 +10,24 @@ function all_sdarea = sig_freq_band(EEG, resp, pth, foc_nm)
         study_name = 'LFP';
     end
     mat_pth = [pth 'Channel events/' study '/'];
-    plot_pth = [pth 'plots/' study ' fba/'];
-    fig_pth = [pth 'figs/' study ' fba/'];
+    plot_pth = [pth 'plots/' study '/'];
     tvd_pth = [pth 'TvD/'];
 
     switch EEG.info.lock{end}
     case 'Response Locked'
         an_st = round(500*fs/1000);
-        an_en = round(1500*fs/1000);
+        an_en = round(2000*fs/1000);
         st_tm = -1250;
         an_st_tm = -750;
-        en_tm = 250;
+        en_tm = 750;
         
         second_mrk = -mean(resp(resp > 0));
     case 'Stimulus Locked'
         an_st = round(500*fs/1000);
-        an_en = round(1500*fs/1000);
+        an_en = round(1750*fs/1000);
         st_tm = -500;
         an_st_tm = 0;
-        en_tm = 1000;
+        en_tm = 1250;
 
         second_mrk = mean(resp(resp > 0));
     end
@@ -80,7 +79,12 @@ function all_sdarea = sig_freq_band(EEG, resp, pth, foc_nm)
             winN = chunck_block(N, :);
             zmean_pop = zeros(size(chnl_evnt, 1), 1);
             event_popm = mean(chnl_evnt(:,winN),2);
-            [h, p] = ttest2(zmean_pop, event_popm, 'Alpha', q, 'Tail', 'left', 'Vartype', 'unequal');
+            if strcmp(study, 'HG')
+                ttype = 'left';
+            elseif strcmp(study, 'LFP')
+                ttype = 'both';
+            end
+            [h, p] = ttest2(zmean_pop, event_popm, 'Alpha', q, 'Tail', ttype, 'Vartype', 'unequal');
 
             pvals = [pvals p];
             hvals = [hvals h];
@@ -139,8 +143,8 @@ function all_sdarea = sig_freq_band(EEG, resp, pth, foc_nm)
         end
         
         warning('off')
-        %figure('visible', 'off','color','white');
-        figure
+        figure('visible', 'off','color','white');
+        %figure
         hold on
 
         % smooth mean of channel event data
@@ -172,17 +176,16 @@ function all_sdarea = sig_freq_band(EEG, resp, pth, foc_nm)
         % Edit plot
         set(gcf, 'Units','pixels','Position',[100 100 800 600])
         title(sprintf('Significant %s Activity in %s - Channel %s - %s Task', study_name, pt_nm, sig_chans{ii}, task))
-        xlabel('ms'); 
-        ylabel('% change from baseline');
+        xlabel('Time (ms)')
+        ylabel('Change from Baseline (%)')
         xlim(gca, [st_tm en_tm])
         ylim(gca, [sdm_min sdp_max])
         axis tight
         grid on
 
         % Save
-        save([tvd_pth study '_TvD.mat'],'TvD');
+        save([tvd_pth study '_TvD.mat'], 'TvD');
         print('-dpng',sprintf('%s_%2.2f_%ims.png',[plot_pth sig_chans{ii}], q, 100))
-        saveas(gcf, sprintf('%s_%2.2f_%ims.fig',[fig_pth sig_chans{ii}], q, 100))
         close
     end
 end

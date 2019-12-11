@@ -9,7 +9,7 @@ function event_prep(EEG, evns, evn_typ, restm, pth, foc_nm)
     switch EEG.info.lock{end} 
         case 'Response Locked'
             st_samp  = round(-1250./1000 *fs);
-            en_samp  = round(250./1000 *fs);
+            en_samp  = round(750./1000 *fs);
             bl_st_samp =  round(-1250./1000 *fs);
             bl_en_samp =  round(-750./1000 *fs);
 
@@ -20,7 +20,7 @@ function event_prep(EEG, evns, evn_typ, restm, pth, foc_nm)
 
         case 'Stimulus Locked'
             st_samp  = round(-500./1000 *fs);
-            en_samp  = round(1000./1000 *fs);
+            en_samp  = round(1250./1000 *fs);
             bl_st_samp =  round(-500./1000 *fs);
             bl_en_samp =  round(0./1000 *fs);
             
@@ -30,7 +30,7 @@ function event_prep(EEG, evns, evn_typ, restm, pth, foc_nm)
             bl_en  = evn_corr + bl_en_samp;
     end
     
-    lock_tm = an_st:an_en;
+    lock_tm = an_st:an_en; % This variable is saved
  
     chnl_lbl = {EEG.chanlocs.labels};
     ch_Data = [EEG.data];

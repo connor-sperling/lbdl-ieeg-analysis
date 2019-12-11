@@ -36,16 +36,39 @@
 %                 recording in structure format including gdat_r and glab_r
 %
 %
+%       AUXILIARY SCRIPTS
+%           
+%           frequency_band_analysis
+%           event_prep
+%           sig_freq_band
+%           naming_analysis
+%           stroop_analysis 
+% 
+%           plot_naming
+%           plot_stroop
+%           subplot_all
+%           shade_plot
+%           rgb_grad 
+% 
+%           bipolar_referencing
+%           event_locator
+%           remove_channels
+%           make_EEG
+% 
+%           loadbar
+%           prompt
+%           usr_yn
+% 
+%
 %       OUTSIDE SCRIPTS USED
 %
 %           eegplot - eeglab script for viewing data
-%
+%           edfread
 
 warning('off')
 close all
 addpath('L:/iEEG_San_Diego/Functions/');
 subjs_dir = 'L:/iEEG_San_Diego/Subjs/';
-%subjs_pth = '/Users/connor-home/Desktop/LBDL/';
 cd(subjs_dir)
 
 d = dir;
@@ -70,7 +93,7 @@ rec_files = dir('*REC.mat');
 hdr_files = dir('*HDR.mat');
 eeg_files = dir('*dat.mat');
 edf_files = dir('*.EDF');
-full_files = [{rec_files.name} {eeg_files.name}];
+full_files = [{rec_files.name} {eeg_files.name} {edf_files.name}];
 rec_files = char({rec_files.name});
 hdr_files = char({hdr_files.name});
 eeg_files = char({eeg_files.name});
@@ -112,6 +135,11 @@ if user_yn('load file?')
     elseif contains(full_files(file_idx,:),'dat')
         load(full_files(file_idx,:));
         eeg = true;
+    elseif contains(full_files(file_idx,:),'edf') || contains(full_files(file_idx,:),'EDF')
+        [Hdr, Rec] = edfread(full_files(file_idx,:));
+        save([df_dir strtrim(erase(full_files(file_idx,:), ".EDF")) 'REC.mat'], 'Rec', '-v7.3');
+        save([df_dir strtrim(erase(full_files(file_idx,:), ".EDF")) 'HDR.mat'], 'Hdr'); 
+        eeg = false;
     end
 end
 
@@ -170,7 +198,7 @@ else  % For data in Hdr/Rec format
     fs = prompt('fs');
     
     % Define the current task
-    task = prompt('task', 'StroopNamingVerbGen');
+    task = prompt('task name', 'StroopNamingVerbGen');
     
     
     % Prompt to re-reference or not
@@ -251,7 +279,7 @@ else
 end
 
 
-evn_typ = cellstr(patinf.Event_Types(~ismissing(patinf.Event_Types)));
+evn_typ = cellstr(patinf.Event_Types(cellfun(@(x) ~isempty(x), cellstr(patinf.Event_Types))));
 res_tm = patinf.Response_time;
 
 
@@ -277,7 +305,7 @@ else
     flt = -1;
 end
 
-EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID '_' task], task, '', ref, '');
+EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, flt, [SUBID '_' task], task, '', ref, '');
 
 % channel/event selection & eegplot
 while true
@@ -309,7 +337,6 @@ while true
         for ii = 1:length(rej_idx)
             if sum(rej_all_no == rej_idx(ii))
                 prompt('skipping event', rej_idx(ii), evn_typ{rej_idx(ii)});
-                disp(msg)
                 rej_idx(ii) = -1;
             end
         end
@@ -335,7 +362,7 @@ while true
         continue
     end
     k = k + 1;
-    EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID '_' task], task, '', ref, '');
+    EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, flt, [SUBID '_' task], task, '', ref, '');
 end
 
 
@@ -425,7 +452,6 @@ end
 
 
 
-
 %% FILTER OUT 60 Hz LINE NOISE (If needed)
 if ~isempty(EEG.notch)
     flt = prompt('notch filt freq', EEG.notch(length(EEG.notch)));
@@ -444,8 +470,8 @@ end
 if size(gdat_r, 1) > size(gdat_r, 2)
     gdat_r = gdat_r';
 end
-EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID '_' task], task, '', ref, '');
 
+EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, flt, [SUBID '_' task], task, '', ref, '');
 
 
 

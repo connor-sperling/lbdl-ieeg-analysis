@@ -27,7 +27,7 @@ function binary = user_yn(pmt, varargin)
             msg = sprintf('\nIt looks like you have already processed %s analysis over ALL events for %s\nWould you like to do it again?', varargin{1}, varargin{2}); 
             
         case 'ret iep?'
-            msg = 'Return to iEEG processor?';
+            msg = '\nReturn to iEEG processor?';
             
     end
         yn = '';
