@@ -58,7 +58,7 @@ function [gdat, stimos, jit, trim_save] = event_locater(gdat, glab, Rec, jitter)
     reset = input(msg, 's');
     if strcmpi(reset, 'reset')
         gdat = Rec;
-        [gdat, stimos, trim_save] = event_locater(gdat, glab, Rec);
+        [gdat, stimos, trim_save] = event_locater(gdat, glab, Rec, 0);
     end
     
     if jitter == 1

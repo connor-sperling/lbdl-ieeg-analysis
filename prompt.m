@@ -62,8 +62,10 @@ function ipt = prompt(pmt, varargin)
         case 'task name'
             taskbank = varargin{1};
             while true
-                task = input('\nEnter the task name: ', 's');
-                if contains(taskbank, task)
+                ipt = input('\nEnter the task name: ', 's');
+                iptchk = ipt;
+                iptchk(regexp(iptchk,'\d*')) = [];
+                if contains(taskbank, iptchk)
                     break
                 end
             end
@@ -74,7 +76,8 @@ function ipt = prompt(pmt, varargin)
             disp('  ')
             disp('------------------------------------')
             disp([num2str(transpose(1:length(glab_r))) char(ones(length(glab_r),1) * '.  ') char(glab_r)])
-            disp('\nEnter numbers of any channels you wish to remove\n   Format: array format - i.e. 1:10 or [1:5 19 20:23]\n   Type - 0 to continue\n\nWarning - This cannot be undone.');
+            msg = sprintf('\nEnter numbers of any channels you wish to remove\n   Format: array format - i.e. 1:10 or [1:5 19 20:23]\n   Type - 0 to continue\n\nWarning - This cannot be undone.');
+            disp(msg)
             while true
                 ipt = input('\n--> ');
                 if min(ipt) >= 0 && max(ipt) <= length(glab_r)
@@ -129,7 +132,7 @@ function ipt = prompt(pmt, varargin)
         case 'skipping event'
             rej_idx = varargin{1};
             evn_typ = varargin{2};
-            msg = sprintf('\nEvent %d (%s) has already been selected for rejection. Skipping...', rej_idx, evn_typ{rej_idx});
+            msg = sprintf('\nEvent %d (%s) has already been selected for rejection. Skipping...', rej_idx, evn_typ);
             disp(msg)
             
             
@@ -137,7 +140,7 @@ function ipt = prompt(pmt, varargin)
             if nargin == 2
                 msg = sprintf('\nThe last notch filter that was placed on this data was at %d Hz.\nWould you like to filter again? Enter frequency in Hz: (-1 for None)\n--> ', varargin{1});
             else
-                msg = input('\nApply notch filter? Enter frequency in Hz: (-1 for None)\n--> ');
+                msg = sprintf('\nApply notch filter? Enter frequency in Hz: (-1 for None)\n--> ');
             end
             ipt = input(msg);
             
@@ -179,16 +182,30 @@ function ipt = prompt(pmt, varargin)
             disp(msg)
             
             
-        case 'focus evns'
-            msg = sprintf('Here are all types of focus events for %s task\n %s:', varargin{1}, varargin{2});
-            disp('  ')
+        case 'naming fba'
+            msg = sprintf('\nGrouping stimulus events by position in category\nData will be analyzed and plotted over groups of 2 positions then groups of 3 poistions\ni.e. Pos. Cat. 1-2, 3-4, etc. then Pos. Cat. 1-3, 4-6');
             disp(msg)
-            t = '';
-            keyset = varargin{3};
-            for k = 1:length(keyset)
-                t = sprintf('%s  %s', t, char(keyset(k)));
+            
+            
+        case 'stroop fba'
+            msg = sprintf('\nGrouping stimulus events by congruency with respect to Stroop task.\nData will be analyzed and plotted over events that are in one of 8 conditions.\ni.e. Congruent in color while in Color stroop task (cCc), Incongruent in color while in Color Stroop task (cIc), Congruent in space while in Spatial Stroop task (sCs), etc.');
+            disp(msg)
+
+            
+        case 'stroop evn prep'
+            pos = '';
+            if isequal(varargin{2}, 'Beg')
+                pos = '1st';
+            elseif isequal(varargin{2}, 'End')
+                pos = '2nd';
             end
-            disp(t)
+            msg = sprintf('\n(%d/16) Processing %s%s%s events within the %s 20 events of each block:\n', varargin{1}, varargin{3}, varargin{4}, varargin{5}, pos);
+            disp(msg)
+            
+            
+        case 'stroop plot'
+            disp(' ')
+            disp('Plotting...')
             
             
         case 'plot by chan'
@@ -196,5 +213,14 @@ function ipt = prompt(pmt, varargin)
             disp('  Grouping plots by channel')
             disp(' ---------------------------')
             
+            
+        case 'naming evn analyaia'
+            msg = sprintf('\nGrouping stimulus events in groups of %s', varargin{1});
+            disp(msg)
+            
+            
+        case 'naming evn prep'
+            msg = sprintf('\n  Processing events with position in category %s\n', varargin{1});
+            disp(msg)
     end
 end
