@@ -91,30 +91,31 @@ function ipt = prompt(pmt, varargin)
             
             
         case 'rejected event/channel'
-            evn_typ = varargin{1};
-            stim_evns = varargin{2};
-            rej_all_no = varargin{3};
-            rej_all = varargin{4};
-            chan_rej = varargin{5};
-            num_evn_rej = length(rej_all_no);
+            evn = varargin{1};
+            evn_idc = varargin{2};
+            evn_rej = varargin{3};
+            chan_rej = varargin{4};
+            
+            len_et = length(evn);
+            len_er = length(evn_rej);
+            len_cr = length(chan_rej);
             
             disp('  ')
             disp('    Events      Event idx')
-            disp([char(ones(length(evn_typ),1) * '     ')  char(evn_typ) char(ones(length(evn_typ),1) * '     ') num2str(stim_evns)])
-            if ~isempty(rej_all_no)
+            disp([char(ones(len_et,1) * '     ')  char(evn) char(ones(len_et,1) * '     ') num2str(evn_idc)])
+            if ~isempty(evn_rej)
                 disp('  ')
                 disp('The following events have already been marked to reject:')
                 disp('  ')
-                disp(' Event no.   Event name')
-                disp([char(ones(num_evn_rej,1) * '     ') num2str(rej_all_no) char(ones(num_evn_rej,1) * '           ') char(rej_all)])
+                disp(' Event name')
+                disp([char(ones(len_er,1) * '     ') char(evn_rej)])
                 disp('  ')
             end
             if ~isempty(chan_rej)
                 disp('  ')
                 disp('The following channels have been rejected:')
                 disp('  ')
-                chan_rej_disp = char(strsplit(chan_rej, ','));
-                disp([char(ones(size(chan_rej_disp,1),1) * '     ') chan_rej_disp])
+                disp([char(ones(len_cr,1) * '     ') char(chan_rej)])
                 disp('  ')
             end
             
@@ -130,19 +131,75 @@ function ipt = prompt(pmt, varargin)
             
             
         case 'skipping event'
-            rej_idx = varargin{1};
-            evn_typ = varargin{2};
-            msg = sprintf('\nEvent %d (%s) has already been selected for rejection. Skipping...', rej_idx, evn_typ);
+            evn = varargin{1};
+            msg = sprintf('\nEvent %s has already been selected for rejection. Skipping...', evn);
             disp(msg)
             
             
         case 'notch filt freq'
             if nargin == 2
-                msg = sprintf('\nThe last notch filter that was placed on this data was at %d Hz.\nWould you like to filter again? Enter frequency in Hz: (-1 for None)\n--> ', varargin{1});
+                filts = varargin{1};
+                msg = sprintf('\nThese are the notch filters that have been placed on your data:\n');
+                for n = 1:length(filts)
+                    msg = sprintf('%s  %d Hz', msg, filts(n));
+                end
+                msg = sprintf('%s\nWould you like to filter again? Enter frequency in Hz: (-1 for None)\n--> ', msg);
             else
                 msg = sprintf('\nApply notch filter? Enter frequency in Hz: (-1 for None)\n--> ');
             end
             ipt = input(msg);
+            
+            
+        case 'pick subjs'
+            subjs = varargin{1};
+            len_s = length(subjs);
+            disp('  ')
+            disp('Here are all of the subjects in your directory:')
+            disp([char(ones(len_s,1) * '     ')  char(subjs)])
+            msg = sprintf('\nChoose which subjects you would like to analyze. (All - to analyze every possible subject)\n--> ');
+            ipt = upper(input(msg, 's'));
+            
+            
+        case 'pick task'
+            tasks = varargin{1};
+            tdisp = sprintf('\nHere are the available Language Tasks to study:\n  %s,', tasks{1});
+            for ii = 2:length(tasks)
+                if ii == length(tasks)
+                    tdisp = sprintf('%s %s', tdisp, tasks{ii});
+                else
+                    tdisp = sprintf('%s %s,', tdisp, tasks{ii});
+                end
+            end
+            disp(tdisp)
+%             chk = 1;
+%             
+%             while chk
+%                 chk = 0;
+                msg = sprintf('\nChoose any number of tasks (All - to analyze all tasks where applicable)\n--> ');
+                ipt = input(msg, 's');
+%                 iptchk = strsplit(ipt);
+%                 for ii = 1:length(iptchk)
+                    
+            
+            
+            
+        case 'pick study'
+            ipt = '';
+            while true   
+                msg = sprintf('\nWould you like to study High Gamma (HG) activity, Local Field Potential (LFP) activity, or both?\n--> ');
+                ipt = upper(input(msg, 's'));
+                if ~strcmpi(ipt, 'HG') && ~strcmpi(ipt, 'LFP') && ~strcmpi(ipt, 'both')
+                    disp(' ')
+                    disp('Enter HG for High Gamma, LFP for Local Field Potential, or both for both')
+                else
+                    break
+                end
+            end
+            
+            
+        case 'percent chan/evn'
+            msg = sprintf('\nAnalysis will include %d channels over %.2f%% of the original stimulus events', varargin{1}, 100*varargin{2}/varargin{3});
+            disp(msg)
             
             
         case 'study'
@@ -162,7 +219,7 @@ function ipt = prompt(pmt, varargin)
                     break
                 elseif strcmpi(lt, 'r')
                     ipt = 'Response Locked';
-                    break
+                   break
                 end
             end
            

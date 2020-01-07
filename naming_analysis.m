@@ -8,7 +8,7 @@ function naming_analysis(EEG, evn_typ, evn_idcs, restm, pth)
     for gsize = [2 3]
         k = 1;
         prompt('naming evn analyaia', num2str(gsize))
-        cat_pth = [pth 'Data by Position in Category/' EEG.info.study{end} '/Group Size ' num2str(gsize) '/'];
+        cat_pth = [pth 'Data by Position in Category/' EEG.study{end} '/Group Size ' num2str(gsize) '/'];
         if ~exist(cat_pth, 'dir')
             mkdir(cat_pth)
         end
@@ -26,7 +26,7 @@ function naming_analysis(EEG, evn_typ, evn_idcs, restm, pth)
             end
             
             prompt('naming evn prep', pcatn(~isletter(pcatn)))
-            event_prep(EEG, focus_evns, focus_evn_typ, focus_resp, cat_pth, pcatn);
+            event_prep(EEG, focus_evns, focus_resp, cat_pth, pcatn);
  
             k = k + gsize;
         end
@@ -45,7 +45,7 @@ function naming_analysis(EEG, evn_typ, evn_idcs, restm, pth)
             chan_mats_struc = dir(['*' sig_chans{ii} '*']);
             channel_mats = {chan_mats_struc.name};
             
-            axii = plot_naming(channel_mats, num2str(gsize), restm, pth, EEG.info.study{end}, EEG.srate, EEG.info.lock{end});
+            axii = plot_naming(channel_mats, num2str(gsize), restm, pth, EEG.study{end}, EEG.srate, EEG.lock{end});
 
             handles{ii} = get(axii, 'children');
             axiis{ii} = axii;

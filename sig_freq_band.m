@@ -3,7 +3,7 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
     
     warning('off')
     fs = EEG.srate;
-    study = EEG.info.study{end};
+    study = EEG.study{end};
     if strcmp(study, 'HG')
         study_name = 'High Gamma';
     else
@@ -13,7 +13,7 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
     plot_pth = [pth 'plots/' study '/'];
     tvd_pth = [pth 'TvD/'];
 
-    switch EEG.info.lock{end}
+    switch EEG.lock{end}
     case 'Response Locked'
         an_st = round(500*fs/1000);
         an_en = round(2000*fs/1000);
@@ -37,7 +37,7 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
     an_win = an_st+1:an_en;
     chunk_len = round((100*fs)/1000);
     nchnk = floor(size(an_win,2)/chunk_len);
-    chunck_block = zeros(nchnk,chunk_len);
+    chunck_block = zeros(nchnk,chunk_len); 
     x = 1;
     for w = 1:nchnk
         chunck_block(w,:) = an_win(x):an_win(x+(chunk_len-1));
@@ -69,7 +69,7 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
     for ii = 1:length(chans)
         
         loadbar(ii, length(chans));
-        C = load([mat_pth foc_nm '_' pt_nm '_' chans{ii} '_' EEG.info.ref '.mat'], 'chnl_evnt');
+        C = load([mat_pth foc_nm '_' pt_nm '_' chans{ii} '_' EEG.ref '.mat'], 'chnl_evnt');
         chnl_evnt = C.chnl_evnt;
         
         pvals = [];
@@ -133,7 +133,7 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
         
         loadbar(ii, length(sig_chans))
                 
-        load([mat_pth foc_nm '_' pt_nm '_' sig_chans{ii} '_' EEG.info.ref '.mat'], 'chnl_evnt');
+        load([mat_pth foc_nm '_' pt_nm '_' sig_chans{ii} '_' EEG.ref '.mat'], 'chnl_evnt');
         
         samp_sd = std(chnl_evnt)/sqrt(size(chnl_evnt,1));
         sdp_max = max(mean(chnl_evnt)+samp_sd);
@@ -148,10 +148,11 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
         hold on
 
         % smooth mean of channel event data
-        fc = 15;
-        [bb,aa] = butter(6,fc/(fs/2)); % Butterworth filter of order 6
-        dat = filter(bb,aa,mean(chnl_evnt,1));
-        
+%         fc = 15;
+%         [bb,aa] = butter(6,fc/(fs/2)); % Butterworth filter of order 6
+%         dat = filter(bb,aa,mean(chnl_evnt,1));
+        dat = mean(chnl_evnt,1);
+
         % Plot data
         sdarea = shade_plot(st_tm:1000/fs:en_tm, dat, samp_sd, rgb('steelblue'), 0.5, 1);      
         all_sdarea = [all_sdarea; sdarea];

@@ -46,9 +46,10 @@ function ax = plot_naming(dat_files, gsize, resp, pth, study, fs, lock)
         cat_no = cat_typ(~isletter(cat_typ));
 
         %dat = smoothdata(mean(chnl_evnt,1), 'gaussian', round(50/1000*fs));
-        fc = 10;
-        [bb,aa] = butter(6,fc/(fs/2)); % Butterworth filter of order 6
-        dat = filter(bb,aa,mean(chnl_evnt,1));
+%         fc = 10;
+%         [bb,aa] = butter(6,fc/(fs/2)); % Butterworth filter of order 6
+%         dat = filter(bb,aa,mean(chnl_evnt,1));
+        dat = mean(chnl_evnt,1);
         
         mindat = min(dat);
         maxdat = max(dat);

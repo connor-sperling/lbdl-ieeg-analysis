@@ -1,18 +1,6 @@
-function EEG = make_EEG(dat, lab, srate, evns, evn_typ, flt, name, task, study, ref, lock)
+function EEG = make_EEG(dat, lab, srate, evns, evn_typ, resp_tm, flt, name, ref)
 
     EEG.setname = name;
-    EEG.info.task = task;
-    if isfield(EEG.info, 'study')
-        EEG.info.study = [EEG.info.study {study}];
-    else
-        EEG.info.study = {study};
-    end
-    EEG.info.ref = ref;
-    if isfield(EEG.info, 'lock')
-        EEG.info.lock = [EEG.info.lock {lock}];
-    else
-        EEG.info.lock = {lock};
-    end
     EEG.nbchan = size(dat,1);
     EEG.trials = 1;
     EEG.pnts = size(dat,2);
@@ -35,7 +23,7 @@ function EEG = make_EEG(dat, lab, srate, evns, evn_typ, flt, name, task, study, 
     EEG.chaninfo.nosedir = '+X';
     EEG.chaninfo.nodatchans = [];
     EEG.chaninfo.icachansind = [];
-    EEG.ref = 'common';
+    EEG.ref = ref;
     EEG.event = [];
     for ii = 1:length(evns)
        EEG.event(ii).latency = evns(ii);
@@ -43,6 +31,7 @@ function EEG = make_EEG(dat, lab, srate, evns, evn_typ, flt, name, task, study, 
        EEG.event(ii).channel = 0;
        EEG.event(ii).bytime = [];
        EEG.event(ii).bvmknum = ii;
+       EEG.event(ii).resp = resp_tm(ii);
        if ~isempty(evn_typ{ii})
            EEG.event(ii).type = evn_typ{ii};
            EEG.event(ii).code = 'Stimulus';
@@ -65,9 +54,7 @@ function EEG = make_EEG(dat, lab, srate, evns, evn_typ, flt, name, task, study, 
     EEG.saved = 'yes';
     EEG.etc = struct;
     
-    if length(flt) > 1 && flt(length(flt)) == -1
-        EEG.notch = flt(1:length(flt)-1);
-    elseif flt == -1
+    if flt == -1
         EEG.notch = [];
     else
         EEG.notch = flt;     

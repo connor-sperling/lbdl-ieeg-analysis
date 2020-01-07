@@ -14,6 +14,9 @@ function binary = user_yn(pmt, varargin)
         case 'rereference?'
             msg = '\nWould you like to re-reference this data?';
             
+        case 'save evn info?'
+            msg = '\nDo you want to save this updated stimulus event information?';
+            
         case 'save EEG?'
             msg = '\nDo you want to save your work?';
             

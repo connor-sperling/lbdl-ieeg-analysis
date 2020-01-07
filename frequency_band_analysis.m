@@ -1,121 +1,148 @@
+if ispc
+    addpath('L:/iEEG_San_Diego/Functions/');
+    subjs_dir = 'L:/iEEG_San_Diego/Subjs/';
+elseif isunix
+    addpath('~/Desktop/Functions/');
+    subjs_dir = '~/Desktop/Subjs/';
+end
+cd(subjs_dir)
 
+subjs = dir('SD*');
+subjs = {subjs.name};
 
-%% Get all good events
-%This block is redundant but better than what I had that makes
-%analysis_evns/evn_typ
-rej_evn_typ = rej_all(~ismissing(rej_all));
-all_evn_typ = string(evn_typ);
-gd_msk = ~ismember(all_evn_typ, rej_evn_typ);
-
-cln_evn_typ = cellstr(all_evn_typ(gd_msk));
-
-cln_resp = res_tm(gd_msk);
-if iscell(cln_resp)
-    cln_resp = cellfun(@str2num,cln_resp);
+an_subjs = prompt('pick subjs', subjs);
+an_subjs = strsplit(an_subjs);
+if strcmpi(an_subjs{1}, 'all')
+    an_subjs = subjs;
 end
 
-cln_evns = stim_evns(gd_msk);
-if iscell(cln_evns)
-    cln_evns = cellfun(@str2num,cln_evns);
+all_tasks = {'Naming', 'Stroop', 'Verb Gen'};
+tasks = prompt('pick task', all_tasks);
+tasks = strsplit(tasks);
+if strcmpi(tasks{1}, 'all')
+    tasks = all_tasks;
 end
 
-
-while true
-%% Choose Analysis Type
-    study = prompt('study');
-    if strcmp(study, 'Q')
-        break
-    end   
-    
-    if isfield(EEG.info, 'study')
-        EEG.info.study = [EEG.info.study {study}];
-    else
-        EEG.info.study = {study};
-    end
-    
-    lock = prompt('lock type');
-    if isfield(EEG.info, 'lock')
-        EEG.info.lock = [EEG.info.lock {lock}];
-    else
-        EEG.info.lock = {lock};
-    end
-
-    ref = EEG.info.ref;
-    
-    % Create directories for FBA over ALL good events
-    lock_pth = [pth 'analysis/' task '/' ref '/' lock '/'];
-    ALL_pth = [lock_pth 'ALL/'];
-
-    if ~exist([ALL_pth 'Channel events/' study], 'dir')
-        mkdir([ALL_pth 'Channel events/' study]);
-        mkdir([ALL_pth 'Plots/' study]);
-        mkdir([ALL_pth 'TvD/']);
-    end
-    
-%% Frequency band analysis across ALL good events
-
-    % event data gathering/filtering
-    d = dir([ALL_pth 'Channel events/' study]);
-    if sum([d.bytes]) > 0
-        ce = user_yn('prep ALL again?', study);
-    else
-        ce = 1;
-    end
-    
-    if ce  
-        prompt('running ALL prep');
-        event_prep(EEG, cln_evns, cln_evn_typ, cln_resp, [ALL_pth 'Channel events/' study '/'], 'ALL')
-    end
-
-    % frequency band analysis
-    ses_TvD = sprintf('%sTvD/%s_TvD.mat', ALL_pth, study);
-    d = dir(ses_TvD);
-    if sum(cellfun(@(x) contains(x, 'mat'), {d.name}))
-        hg = user_yn('fba ALL again?', study, SUBID);
-    else
-        hg = 1;
-    end
-    
-    if hg 
-        prompt('running sigchan')
-        sig_freq_band(EEG, cln_resp, ALL_pth, 'ALL');
-    end
-    
-%% Prepare for Focused Analysis
-    load(ses_TvD)
-    if isempty(TvD)
-        prompt('no results', study, lock)
-        continue
-    end
-
-    % find significant channels, make stucture that only contains sig dat
-    chansSIG = string(TvD(:,2));
-    chansALL = string(glab_r)';
-    gdat_SIG = gdat_r(ismember(chansALL, chansSIG), :);
-    EEG_sig = make_EEG(gdat_SIG, TvD(:,2), fs, cln_evns, cln_evn_typ, -1, [SUBID '_' task], task, study, ref, lock);
-
-    disp('  ')
-    disp('Focused FBA:')
-    
-    
-%% Grouping of Frequency Band Analysis by Category
-
-    tsk = task;
-    tsk(regexp(tsk,'\d*')) = [];
-    switch tsk
-        case 'Naming'
-            prompt('naming fba')
-            naming_analysis(EEG_sig, cln_evn_typ, cln_evns, cln_resp, lock_pth)
-
-        case 'Stroop'
-            prompt('stroop fba')
-            stroop_analysis(EEG_sig, cln_evn_typ, cln_evns, cln_resp, lock_pth)
-    end
-    
+all_studies = {'HG', 'LFP'};
+studies = prompt('pick study');
+studies = strsplit(studies);
+if strcmpi(studies{1}, 'both')
+    studies = all_studies;
 end
 
-if user_yn('ret iep?')
-    run('iEEGprocessor.m')
+ref = 'bipolar';
+
+for subjcell = an_subjs
+    subj = char(subjcell);
+    an_dir = sprintf('%s%s/analysis/', subjs_dir, subj);
+    df_dir = sprintf('%s%s/Data Files/', subjs_dir, subj); 
+    cd(df_dir);
+    for taskcell = tasks
+        task = char(taskcell);
+        eeg_file = sprintf('%s_%s_%s_dat.mat', subj, task, ref);
+        raw_txt = sprintf('%s_%s_stims.txt', subj, task);
+        data = dir(df_dir);
+        data = {data.name};
+        if ~ismember(eeg_file, data)
+            continue
+        else
+            load(eeg_file, 'EEG')
+            
+            rawfid = fopen(raw_txt, 'r');
+            raw_cell = textscan(rawfid, '%f %s');
+            fclose(rawfid);
+            raw_evn = raw_cell{2};
+            
+            rtm = [EEG.event.resp]';
+            evn = {EEG.event.type}';
+            evn_idc = [EEG.event.latency]';
+            
+            prompt('percent chan/evn', size(EEG.data,1), length(evn), length(raw_evn))
+        end
+        for studcell = studies
+            study = char(studcell);
+            for lockcell = {'Stimulus Locked', 'Response Locked'}
+                lock = char(lockcell);
+   
+                if isfield(EEG, 'study')
+                    EEG.study = [EEG.study {study}];
+                else
+                    EEG.study = {study};
+                end
+                
+                if isfield(EEG, 'lock')
+                    EEG.lock = [EEG.lock {lock}];
+                else
+                    EEG.lock = {lock};
+                end
+
+                % Create directories for FBA over ALL good events
+                lock_pth = [an_dir task '/' ref '/' lock '/'];
+                ALL_pth = [lock_pth 'ALL/'];
+
+                if ~exist([ALL_pth 'Channel events/' study], 'dir')
+                    mkdir([ALL_pth 'Channel events/' study]);
+                    mkdir([ALL_pth 'plots/' study]);
+                    mkdir([ALL_pth 'TvD/']);
+                end
+
+            % Frequency band analysis across ALL good events
+
+                ep = true; % Manually change to FALSE if package code change does not affect event_prep
+                if ep  
+                    prompt('running ALL prep');
+                    event_prep(EEG, evn_idc, rtm, [ALL_pth 'Channel events/' study '/'], 'ALL')
+                end
+                
+                sfb = true; % Manually change to FALSE if package code change does not affect sig_freq_band
+                if sfb 
+                    prompt('running sigchan')
+                    sig_freq_band(EEG, rtm, ALL_pth, 'ALL');
+                end
+
+                ses_TvD = sprintf('%sTvD/%s_TvD.mat', ALL_pth, study);
+                load(ses_TvD)
+
+                % find significant channels, make stucture that only contains sig dat
+                sig_chans = string(TvD(:,2));
+                all_chans = string({EEG.chanlocs.labels}');
+                dat = [EEG.data];
+                dat(~ismember(chansALLstr, sig_chans), :) = [];
+                EEG = make_EEG(dat, TvD(:,2), EEG.srate, evn_idc, evn, rtm, -1, [subj '_' task], ref);
+        
+                
+                if isfield(EEG, 'study')
+                    EEG.study = [EEG.study {study}];
+                else
+                    EEG.study = {study};
+                end
+                
+                if isfield(EEG, 'lock')
+                    EEG.lock = [EEG.lock {lock}];
+                else
+                    EEG.lock = {lock};
+                end
+                
+                disp('  ')
+                disp('Focused FBA:')
+
+
+            % Grouping of Frequency Band Analysis by Category
+
+                tsk = task;
+                tsk(regexp(tsk,'\d*')) = [];
+                switch tsk
+                    case 'Naming'
+                        prompt('naming fba')
+                        naming_analysis(EEG, evn, evn_idc, rtm, lock_pth)
+
+                    case 'Stroop'
+                        prompt('stroop fba')
+                        stroop_analysis(EEG, evn, evn_idc, rtm, lock_pth)
+                end
+            end
+        end
+    end
 end
 
 
