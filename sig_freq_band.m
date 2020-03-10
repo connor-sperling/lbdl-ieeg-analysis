@@ -3,41 +3,39 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
     
     warning('off')
     fs = EEG.srate;
-    study = EEG.info.study{end};
+    study = EEG.study{end};
     if strcmp(study, 'HG')
         study_name = 'High Gamma';
     else
         study_name = 'LFP';
     end
-    mat_pth = [pth 'Channel events/' study '/'];
-    plot_pth = [pth 'plots/' study '/'];
-    tvd_pth = [pth 'TvD/'];
+    mat_pth = sprintf('%s/Channel events/%s', pth, study);
+    plot_pth = sprintf('%s/plots/%s', pth, study);
+    tvd_pth = sprintf('%s/TvD', pth);
 
-    switch EEG.info.lock{end}
-    case 'Response Locked'
-        an_st = round(500*fs/1000);
-        an_en = round(2000*fs/1000);
-        st_tm = -1250;
-        an_st_tm = -750;
-        en_tm = 750;
-        
-        second_mrk = -mean(resp(resp > 0));
-    case 'Stimulus Locked'
-        an_st = round(500*fs/1000);
-        an_en = round(1750*fs/1000);
-        st_tm = -500;
-        an_st_tm = 0;
-        en_tm = 1250;
-
-        second_mrk = mean(resp(resp > 0));
+    switch EEG.lock{end}
+        case 'Response Locked'        
+            st_tm = -1250;
+            an_st_tm = -750;
+            an_en_tm = 750;
+            en_tm = 750;
+            second_mrk = -mean(resp);
+        case 'Stimulus Locked'
+            st_tm = -1000;
+            an_st_tm = 0;
+            an_en_tm = 1000;
+            en_tm = 1600;
+            second_mrk = mean(resp);
     end
 
+    an_st = round(abs(an_st_tm-st_tm)*fs/1000);
+    an_en = round(abs(an_en_tm-st_tm)*fs/1000);
     st_sam = round(st_tm/1000*fs);
     
     an_win = an_st+1:an_en;
     chunk_len = round((100*fs)/1000);
     nchnk = floor(size(an_win,2)/chunk_len);
-    chunck_block = zeros(nchnk,chunk_len);
+    chunck_block = zeros(nchnk,chunk_len); 
     x = 1;
     for w = 1:nchnk
         chunck_block(w,:) = an_win(x):an_win(x+(chunk_len-1));
@@ -57,23 +55,20 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
     
     chans = {EEG.chanlocs.labels};
     
-    sig_msk = [];
     if exist('TvD', 'var')
         clear TvD
     end
-    TvD = {};
+    TvD = cell(0,5);
     k = 0;
-    disp('  ')
-    disp('  Building TvD')
-    disp(' --------------')
+
     for ii = 1:length(chans)
         
-        loadbar(ii, length(chans));
-        C = load([mat_pth foc_nm '_' pt_nm '_' chans{ii} '_' EEG.info.ref '.mat'], 'chnl_evnt');
+        C = load(sprintf('%s/%s_%s_%s_%s.mat', mat_pth, foc_nm, pt_nm, chans{ii}, EEG.ref), 'chnl_evnt');
         chnl_evnt = C.chnl_evnt;
         
         pvals = [];
         hvals = [];
+        
         % unpaired ttest at every point
         for N = 1:nchnk
             winN = chunck_block(N, :);
@@ -94,12 +89,12 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
         [pthr, ~, padj] = fdr2(pvals,q);
 
         %find starting indicies of significance groups
-        %H = pvals < pthr;
-        H = hvals;
+        hcorr = pvals < pthr;
+        
         %identify if electrode is significant (has significant chunk that is >10% baseline)
         sig_idcs = [];
-        for n = 1:length(H)
-            if H(n)
+        for n = 1:length(hcorr)
+            if hcorr(n)
                 sig_idcs = [sig_idcs; chunck_block(n,:)];
             end
         end
@@ -112,28 +107,18 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
             TvD{k,4} = pvals; %original pvalues
             TvD{k,5} = sig_idcs;
             TvD{k,6} = padj; %adjusted pvalues
-            sig_msk = [sig_msk 1];
-        else
-            sig_msk = [sig_msk 0];
         end
     end
-    
-    % remove empty rows in TvD
-    emptyCells = cellfun('isempty', TvD);
-    TvD(all(emptyCells,2),:) = [];
 
     
     % plot significant electrodes
-    sig_chans = chans(logical(sig_msk));
+    sig_chans = TvD(:,2);
     all_sdarea = [];
-    disp('  ')
-    disp(['  Plotting ' study])
-    disp(' --------------')
+
+
     for ii = 1:length(sig_chans)
-        
-        loadbar(ii, length(sig_chans))
-                
-        load([mat_pth foc_nm '_' pt_nm '_' sig_chans{ii} '_' EEG.info.ref '.mat'], 'chnl_evnt');
+                        
+        load(sprintf('%s/%s_%s_%s_%s.mat', mat_pth, foc_nm, pt_nm, sig_chans{ii}, EEG.ref), 'chnl_evnt');
         
         samp_sd = std(chnl_evnt)/sqrt(size(chnl_evnt,1));
         sdp_max = max(mean(chnl_evnt)+samp_sd);
@@ -151,7 +136,7 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
         fc = 15;
         [bb,aa] = butter(6,fc/(fs/2)); % Butterworth filter of order 6
         dat = filter(bb,aa,mean(chnl_evnt,1));
-        
+
         % Plot data
         sdarea = shade_plot(st_tm:1000/fs:en_tm, dat, samp_sd, rgb('steelblue'), 0.5, 1);      
         all_sdarea = [all_sdarea; sdarea];
@@ -166,16 +151,23 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
         end
         
         sigt_adj = 1000*(TvD{ii,5}+st_sam)/fs;
+        chan_sidc = TvD{ii,5};
         % Plot horizontal lines
-        plot([st_tm     an_st_tm], [0 0], 'k');
-        plot([an_st_tm  en_tm], [0 0], 'k', 'LineWidth',3);
-        for jj = 1:size(sigt_adj,1)
-            plot(sigt_adj(jj,:), zeros(1,102), 'r', 'linewidth', 3)
+        plot([st_tm     en_tm], [0 0], 'k');
+        plot([an_st_tm  an_en_tm], [0 0], 'k', 'LineWidth',2);
+ 
+        
+        pidc = sort(chan_sidc(dat(chan_sidc) > 0));
+        prngs = [1; find(diff(pidc) > 1)+1; length(pidc)];
+        ptm = 1000*(pidc+st_sam)/fs;
+        for k = 1:length(prngs)-1
+            rzone = ptm(prngs(k)):ptm(prngs(k+1)-1);
+            plot(rzone, zeros(1,length(rzone)), 'r', 'linewidth', 2)
         end
 
         % Edit plot
         set(gcf, 'Units','pixels','Position',[100 100 800 600])
-        title(sprintf('Significant %s Activity in %s - Channel %s - %s Task', study_name, pt_nm, sig_chans{ii}, task))
+        title(sprintf('Significant %s Activity %s - Channel %s - %s Task', study_name, pt_nm, sig_chans{ii}, task))
         xlabel('Time (ms)')
         ylabel('Change from Baseline (%)')
         xlim(gca, [st_tm en_tm])
@@ -184,8 +176,8 @@ function sig_freq_band(EEG, resp, pth, foc_nm)
         grid on
 
         % Save
-        save([tvd_pth study '_TvD.mat'], 'TvD');
-        print('-dpng',sprintf('%s_%2.2f_%ims.png',[plot_pth sig_chans{ii}], q, 100))
+        save(sprintf('%s/%s_TvD.mat', tvd_pth, study), 'TvD');
+        print('-dpng',sprintf('%s/%s_%2.2f_%ims.png', plot_pth, sig_chans{ii}, q, 100))
         close
     end
 end

@@ -3,7 +3,7 @@ function ax = plot_naming(EEG, dat_files, ch_lab, gsize, lock_pth, cnum)
     if ispc
         subjs_dir = 'L:/iEEG_San_Diego/Subjs';
     elseif isunix
-        subjs_dir = '/mnt/bdl-raw/iEEG_San_Diego/Subjs';
+        subjs_dir = '~/Desktop/Subjs';
     end
     
     
@@ -62,7 +62,7 @@ function ax = plot_naming(EEG, dat_files, ch_lab, gsize, lock_pth, cnum)
     hold on
     
     sd_shade = [176 176 176]./255;
-    rst = 236; gst = 233; bst = 152;
+    rst = 40; gst = 30; bst = 0;
     r = rst/255; g = gst/255; b = bst/255;
     
     cats = [];

@@ -90,59 +90,182 @@ function ipt = prompt(pmt, varargin)
             end
             
             
-        case 'rejected event/channel'
-            evn_typ = varargin{1};
-            stim_evns = varargin{2};
-            rej_all_no = varargin{3};
-            rej_all = varargin{4};
-            chan_rej = varargin{5};
-            num_evn_rej = length(rej_all_no);
+        case 'ecrej header'
+            evn = varargin{1};
+            evn_idc = varargin{2};
+            
+            len_et = length(evn);
             
             disp('  ')
             disp('    Events      Event idx')
-            disp([char(ones(length(evn_typ),1) * '     ')  char(evn_typ) char(ones(length(evn_typ),1) * '     ') num2str(stim_evns)])
-            if ~isempty(rej_all_no)
+            disp([char(ones(len_et,1) * '     ')  char(evn) char(ones(len_et,1) * '     ') num2str(evn_idc)])
+
+            str = ['\nTo REJECT an event or a channel\n'...
+                   '   Type -      "Event"      followed by any number of event names.\n'...
+                   '        -  "Event Contains" followed by a common phrase within the name to reject multiple events of the same type.\n'...
+                   '        -     "Channel"     followed by any number of channel names found in the plot.\n'...
+                   '\nTo REPLACE an event or a channel\n'...
+                   '   Type -  "Event Replace"  followed by any number of events you want to remove from the rejection list\n'...
+                   '        - "Channel Replace" followed by any number of channels you want to remove from the rejection list\n'...
+                   '                                 (channel data will be restored at the bottom of the new plot)\n'... 
+                   '\nTo show the events or channels that have been marked for rejection\n'...
+                   '   Type -   "Show Events"\n'...
+                   '        -  "Show Channels"\n'...
+                   '\nTo view the rejected channels or the excess channels\n'...
+                   '   Type -   "View Reject"\n'...
+                   '        -   "View Excess"\n'...
+                   '\nTo display this message again\n'...
+                   '   Type -      "Help"\n'...
+                   '\nTo end this session, enter "0"\n\n--> '];
+            ipt = input(str, 's');
+           
+            
+        case 'ecrej help'
+            msg = sprintf(['\nTo REJECT an event or a channel\n'...
+                   '   Type -      "Event"      followed by any number of event names.\n'...
+                   '        -  "Event Contains" followed by a common phrase within the name to reject multiple events of the same type.\n'...
+                   '        -     "Channel"     followed by any number of channel names found in the plot.\n'...
+                   '\nTo REPLACE an event or a channel\n'...
+                   '   Type -  "Event Replace"  followed by any number of events you want to remove from the rejection list\n'...
+                   '        - "Channel Replace" followed by any number of channels you want to remove from the rejection list\n'...
+                   '                                 (channel data will be restored at the bottom of the new plot)\n'... 
+                   '\nTo show the events or channels that have been marked for rejection\n'...
+                   '   Type -   "Show Events"\n'...
+                   '        -  "Show Channels"\n'...
+                   '\nTo view the rejected channels or the excess channels\n'...
+                   '   Type -   "View Reject"\n'...
+                   '        -   "View Excess"\n'...
+                   '\nTo display this message again\n'...
+                   '   Type -      "Help"\n'...
+                   '\nTo end this session, enter "0"']);
+            disp(msg)
+            
+            
+        case 'arrow'
+            ipt = input('\n--> ', 's');
+                   
+            
+        case 'rejected events'
+            evn_rej = varargin{1};
+            len_er = length(evn_rej);
+            
+            if ~isempty(evn_rej)
                 disp('  ')
                 disp('The following events have already been marked to reject:')
                 disp('  ')
-                disp(' Event no.   Event name')
-                disp([char(ones(num_evn_rej,1) * '     ') num2str(rej_all_no) char(ones(num_evn_rej,1) * '           ') char(rej_all)])
+                disp(' Event name')
+                disp([char(ones(len_er,1) * '     ') char(evn_rej)])
+                disp('  ')
+            else
+                disp('  ')
+                disp('No events have been rejected so far')
                 disp('  ')
             end
+            
+            
+        case 'rejected channels'
+            chan_rej = varargin{1};
+            len_cr = length(chan_rej);
+            
             if ~isempty(chan_rej)
                 disp('  ')
                 disp('The following channels have been rejected:')
                 disp('  ')
-                chan_rej_disp = char(strsplit(chan_rej, ','));
-                disp([char(ones(size(chan_rej_disp,1),1) * '     ') chan_rej_disp])
+                disp([char(ones(len_cr,1) * '     ') char(chan_rej)])
+                disp('  ')
+            else
+                disp('  ')
+                disp('No channels have been rejected so far')
                 disp('  ')
             end
-            
-            
-        case 'channels/events to reject'
-            str = ['\nEnter the channels or events that you want to reject\n'...
-                   '   Type - Channel followed by any number of channel names listed here.\n'...
-                   '        - Event followed by any number of event names listed here.\n'...
-                   '        - Event Contains followed by a common name to reject multiple events of the same type.\n'...
-                   '        - Replace followed by an EVENT to remove that event from the rejection list.\n'...
-                   '        - 0 to stop\n--> '];
-            ipt = input(str, 's');
-            
+              
             
         case 'skipping event'
-            rej_idx = varargin{1};
-            evn_typ = varargin{2};
-            msg = sprintf('\nEvent %d (%s) has already been selected for rejection. Skipping...', rej_idx, evn_typ);
+            evn = varargin{1};
+            disp('  ')
+            msg = sprintf('Event %s has already been selected for rejection. Skipping...', evn);
             disp(msg)
             
             
         case 'notch filt freq'
             if nargin == 2
-                msg = sprintf('\nThe last notch filter that was placed on this data was at %d Hz.\nWould you like to filter again? Enter frequency in Hz: (-1 for None)\n--> ', varargin{1});
+                filts = varargin{1};
+                msg = sprintf('\nThese are the notch filters that have been placed on your data:\n');
+                for n = 1:length(filts)
+                    msg = sprintf('%s  %d Hz', msg, filts(n));
+                end
+                msg = sprintf('%s\nWould you like to filter again? Enter frequency in Hz: (-1 for None)\n--> ', msg);
             else
                 msg = sprintf('\nApply notch filter? Enter frequency in Hz: (-1 for None)\n--> ');
             end
             ipt = input(msg);
+            
+            
+        case 'pick subjs'
+            subjs = varargin{1};
+            len_s = length(subjs);
+            disp('  ')
+            disp('Here are all of the subjects in your directory:')
+            disp([char(ones(len_s,1) * '     ')  char(subjs)])
+            msg = sprintf('\nChoose which subjects you would like to analyze. (All - to analyze every possible subject)\n--> ');
+            ipt = upper(input(msg, 's'));
+            
+            
+        case 'pick task'
+            tasks = varargin{1};
+            tdisp = sprintf('\nHere are the available Language Tasks to study:\n  %s,', tasks{1});
+            for ii = 2:length(tasks)
+                if ii == length(tasks)
+                    tdisp = sprintf('%s %s', tdisp, tasks{ii});
+                else
+                    tdisp = sprintf('%s %s,', tdisp, tasks{ii});
+                end
+            end
+            disp(tdisp)
+            swch = 1;
+            
+            while swch
+                msg = sprintf('\nChoose any number of tasks (All - to analyze all tasks where applicable)\n--> ');
+                ipt = input(msg, 's');
+                cipt = strsplit(ipt);
+                for ii = 1:length(cipt)
+                    if all(~cellfun(@(x) strcmpi(x, cipt{ii}), tasks))
+                        swch = 1;
+                        break
+                    else
+                        swch = 0;
+                    end
+                    
+                end
+                
+            end
+
+            
+        case 'pick study'
+            ipt = '';
+            while true   
+                msg = sprintf('\nWould you like to study High Gamma (HG) activity, Local Field Potential (LFP) activity, or both?\n--> ');
+                ipt = upper(input(msg, 's'));
+                if ~strcmpi(ipt, 'HG') && ~strcmpi(ipt, 'LFP') && ~strcmpi(ipt, 'both')
+                    disp(' ')
+                    disp('Enter HG for High Gamma, LFP for Local Field Potential, or both for both')
+                else
+                    break
+                end
+            end
+            
+            
+        case 'processing info'
+            subj = varargin{1};
+            task = varargin{2};
+            study = varargin{3};
+            lock = varargin{4};
+            nchan = varargin{5};
+            nevn = varargin{6};
+            norig = varargin{7};
+            
+            msg = sprintf('\nProcessing: %s, %s task, %s analysis, %s\n            Analysis will include %d channels over %.2f%% of the original stimulus events.', subj, task, study, lock, nchan, 100*nevn/norig);
+            disp(msg)
             
             
         case 'study'
@@ -162,19 +285,19 @@ function ipt = prompt(pmt, varargin)
                     break
                 elseif strcmpi(lt, 'r')
                     ipt = 'Response Locked';
-                    break
+                   break
                 end
             end
            
             
         case 'running ALL prep'
-            disp('  ')
-            disp(' Gathering all channel data over all event regions ')
+            msg = sprintf('\n%s: Gathering all channel data over all event regions', varargin{1});
+            disp(msg)
             
             
         case 'running sigchan'
-            disp('  ')
-            disp(' Running frequency band analysis')
+            msg = sprintf('\n%s: Running frequency band analysis', varargin{1});
+            disp(msg)
             
             
         case 'no results'
@@ -183,12 +306,12 @@ function ipt = prompt(pmt, varargin)
             
             
         case 'naming fba'
-            msg = sprintf('\nGrouping stimulus events by position in category\nData will be analyzed and plotted over groups of 2 positions then groups of 3 poistions\ni.e. Pos. Cat. 1-2, 3-4, etc. then Pos. Cat. 1-3, 4-6');
+            msg = sprintf('\nGrouping and analyzing stimulus events by position in category');
             disp(msg)
             
             
         case 'stroop fba'
-            msg = sprintf('\nGrouping stimulus events by congruency with respect to Stroop task.\nData will be analyzed and plotted over events that are in one of 8 conditions.\ni.e. Congruent in color while in Color stroop task (cCc), Incongruent in color while in Color Stroop task (cIc), Congruent in space while in Spatial Stroop task (sCs), etc.');
+            msg = sprintf('\nGrouping and analyzing stimulus events by congruency with respect to Stroop task.\nData will be analyzed and plotted over events that are in one of 8 conditions.\ni.e. Congruent in color while in Color stroop task (cCc), Incongruent in color while in Color Stroop task (cIc), Congruent in space while in Spatial Stroop task (sCs), etc.');
             disp(msg)
 
             
@@ -208,19 +331,11 @@ function ipt = prompt(pmt, varargin)
             disp('Plotting...')
             
             
-        case 'plot by chan'
-            disp(' ')
-            disp('  Grouping plots by channel')
-            disp(' ---------------------------')
             
-            
-        case 'naming evn analyaia'
-            msg = sprintf('\nGrouping stimulus events in groups of %s', varargin{1});
+        case 'naming evn analysis'
+            msg = sprintf('\n    Processing in groups of %s', varargin{1});
             disp(msg)
             
             
-        case 'naming evn prep'
-            msg = sprintf('\n  Processing events with position in category %s\n', varargin{1});
-            disp(msg)
     end
 end

@@ -5,15 +5,29 @@ function naming_analysis(EEG, evn_typ, evn_idcs, restm, pth)
     keyset = unique(positions);
   
     
-    for gsize = [2 3]
+    for gsize = [1 2]
         k = 1;
-        prompt('naming evn analyaia', num2str(gsize))
-        cat_pth = [pth 'Data by Position in Category/' EEG.info.study{end} '/Group Size ' num2str(gsize) '/'];
+        prompt('naming evn analysis', num2str(gsize))
+        cat_pth = sprintf('%s/Data by Position in Category/%s/Group Size %d', pth, EEG.study{end}, gsize);
+        
         if ~exist(cat_pth, 'dir')
             mkdir(cat_pth)
+        elseif k == 1
+            fp = dir(fullfile(cat_pth, '*.mat'));
+            mfiles = {fp.name};
+            for m = 1:length(mfiles)
+                delete([cat_pth mfiles{m}]);
+            end
         end
+        
         while k <= length(keyset)
-            pcatn = ['poscat' keyset{k} '-' num2str(k+gsize-1)];
+            
+            if k == k+gsize-1
+                pcatn = ['poscat' keyset{k}];
+            else
+                pcatn = ['poscat' keyset{k} '-' num2str(k+gsize-1)];
+            end
+            
             focus_evn_typ = {}; focus_evns = []; focus_resp = [];
             for ii = k:k+gsize-1
                 temp_typ = evn_typ(ismember(positions, keyset(ii)));
@@ -25,27 +39,23 @@ function naming_analysis(EEG, evn_typ, evn_idcs, restm, pth)
                 focus_resp = [focus_resp; temp_resp];
             end
             
-            prompt('naming evn prep', pcatn(~isletter(pcatn)))
-            event_prep(EEG, focus_evns, focus_evn_typ, focus_resp, cat_pth, pcatn);
+            event_prep(EEG, focus_evns, focus_resp, cat_pth, pcatn);
  
             k = k + gsize;
         end
 
        
-        sig_chans = {EEG.chanlocs.labels};
+        sig_chans = {EEG.chanlocs.labels}';
         subj = strsplit(EEG.setname, '_');
         subj = subj{1};
         
         handles = {};
         axiis = {};
         cd(cat_pth)
-        prompt('plot by chan')
         for ii = 1:length(sig_chans)
-            loadbar(ii, length(sig_chans))
             chan_mats_struc = dir(['*' sig_chans{ii} '*']);
             channel_mats = {chan_mats_struc.name};
-            
-            axii = plot_naming(channel_mats, num2str(gsize), restm, pth, EEG.info.study{end}, EEG.srate, EEG.info.lock{end});
+            axii = plot_naming(EEG, channel_mats, sig_chans{ii}, num2str(gsize), pth, ii);
 
             handles{ii} = get(axii, 'children');
             axiis{ii} = axii;

@@ -1,13 +1,13 @@
-function [ndat, nlab, removed] = remove_channels(dat, lab, chans, removed)    
+function [ndat, nlab, rdat, removed] = remove_channels(dat, lab, chan_no, rdat, removed)    
     ret_orig = 0;
-    for n = chans
+    for n = chan_no
         if n > 0 && n <= length(lab)
             chan = lab{n};
             lab{n} = 'x';
             if isempty(removed)
-                removed = chan;
+                removed = {chan};
             else
-                removed = [removed ',' chan];
+                removed = [removed;  {chan}];
             end
         else
             msg = sprintf('Channel #%d is not in range of channel numbers', n);
@@ -19,13 +19,9 @@ function [ndat, nlab, removed] = remove_channels(dat, lab, chans, removed)
     ndat = dat;
     nlab = lab;
     if ~ret_orig
-        ndat(chans,:) = [];
+        rdat = [rdat; ndat(chan_no,:)];
+        ndat(chan_no,:) = [];
         nlab = {lab{~strcmp(lab, 'x')}};
 
-        rmvd_disp = strsplit(removed, ',');
-        if ~isempty(removed)
-            disp('  ')
-            disp('Removed the following channels:')
-            disp(char(rmvd_disp))
-        end
     end
+end

@@ -1,0 +1,989 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>iEEGprocessor</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-10-29"><meta name="DC.source" content="iEEGprocessor.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">Load Rec/Hdr files &amp; Patient Info table</a></li><li><a href="#3">Prep Data</a></li><li><a href="#4">Bipolar Reference &amp; Remove excess channels manually</a></li><li><a href="#5">Event Rejection &amp; Channel Rejection</a></li><li><a href="#6">Save all edits to Patient table info</a></li><li><a href="#7">FILTER OUT 60 Hz LINE NOISE (If needed)</a></li><li><a href="#8">Save pre-processed data, Save Excel file</a></li></ul></div><pre class="language-matlab">A <span class="string">user</span> <span class="string">friendly</span> <span class="string">command</span> <span class="string">line</span> <span class="string">interface</span> <span class="string">program</span> <span class="string">for</span> <span class="string">loading</span> <span class="string">iEEG</span> <span class="string">data</span>
+and <span class="string">preparing</span> <span class="string">data</span> <span class="string">for</span> <span class="string">further</span> <span class="string">analysis.</span>
+User <span class="string">may</span>
+    - Load iEEG <span class="string">data</span> <span class="string">that</span> <span class="string">may</span> <span class="string">be</span> <span class="string">stored</span> <span class="string">in</span> <span class="string">a</span> <span class="string">variety</span> <span class="string">of</span> <span class="string">formats</span>
+    - Annotate data <span class="string">by</span> <span class="string">patient</span>, patient <span class="string">task</span>, reference <span class="string">type</span>, etc.
+    - Trim large <span class="string">amounts</span> <span class="string">of</span> <span class="string">unnecessary</span> <span class="string">data</span> <span class="string">for</span> <span class="string">faster</span> <span class="string">anaylsis</span>
+    - Find the <span class="string">indicies</span> <span class="string">of</span> <span class="string">Stimuls</span> <span class="string">Onset</span> <span class="string">events</span> <span class="string">from</span> <span class="string">subject</span> <span class="string">task</span>
+    - Remove superfluous <span class="string">electrode</span> <span class="string">channels</span> <span class="string">data</span>
+    - Remove noisy <span class="string">or</span> <span class="string">damaged</span> <span class="string">channels</span> <span class="string">from</span> <span class="string">data</span>
+    - Reject Stimulus <span class="string">events</span> <span class="string">based</span> <span class="string">on</span> <span class="string">known</span> <span class="string">errors</span> <span class="string">or</span> <span class="string">noisy</span> <span class="string">data</span>
+    - Notch filter <span class="string">line</span> <span class="string">noise</span> <span class="string">from</span> <span class="string">data</span>
+    - Save all <span class="string">data</span>, progress <span class="string">and</span> <span class="string">annotations</span>
+</pre><pre class="language-matlab">VARIABLE <span class="string">GUIDE:</span>
+</pre><pre>     PATH VARIABLES:</pre><pre>         pth - path to the subject directory (./Subjs/"SUBID"/)
+         df_dir - path to the ./Subjs/"SUBID"/Data Files directory</pre><pre>     SUBJECT/TASK VARIABLES:</pre><pre>         SUBID - subject ID (i.e. SD16)
+         task - task code name (i.e Naming)</pre><pre>     OUTPUT FILES</pre><pre>         gdat_r - all good electrode matrix (Channel x Time), in bipolar
+                  unipolar format
+         glab_r - channel labels corresponding to good channel data
+         EEG - Contains all necessary information about the iEEG
+               recording in structure format including gdat_r and glab_r</pre><pre>     OUTSIDE SCRIPTS USED</pre><pre>         eegplot - eeglab script for viewing data</pre><pre class="codeinput">warning(<span class="string">'off'</span>)
+close <span class="string">all</span>
+addpath(<span class="string">'L:/iEEG_San_Diego/Functions/'</span>);
+subjs_dir = <span class="string">'L:/iEEG_San_Diego/Subjs/'</span>;
+<span class="comment">%subjs_pth = '/Users/connor-home/Desktop/LBDL/';</span>
+cd(subjs_dir)
+
+d = dir;
+pts = {d.name};
+pts = pts(cellfun(@(x) contains(x,<span class="string">'SD'</span>), pts));
+
+SUBID = prompt(<span class="string">'define subject'</span>, subjs_dir, pts);
+
+subj_num = str2double(SUBID(regexp(SUBID,<span class="string">'\d'</span>)));
+
+pth = [subjs_dir SUBID <span class="string">'/'</span>];
+
+<span class="comment">% assigns data directory</span>
+df_dir = [pth <span class="string">'Data Files/'</span>];
+
+cd(df_dir);
+</pre><pre class="codeoutput error">Error using input
+Cannot call INPUT from EVALC.
+
+Error in prompt (line 8)
+                ipt = upper(input('\nSubject ID: ', 's'));
+
+Error in iEEGprocessor (line 55)
+SUBID = prompt('define subject', subjs_dir, pts);
+</pre><h2 id="2">Load Rec/Hdr files &amp; Patient Info table</h2><pre class="codeinput">rec_files = dir(<span class="string">'*REC.mat'</span>);
+hdr_files = dir(<span class="string">'*HDR.mat'</span>);
+eeg_files = dir(<span class="string">'*dat.mat'</span>);
+edf_files = dir(<span class="string">'*.EDF'</span>);
+full_files = [{rec_files.name} {eeg_files.name}];
+rec_files = char({rec_files.name});
+hdr_files = char({hdr_files.name});
+eeg_files = char({eeg_files.name});
+full_files = char(full_files);
+
+<span class="comment">% Files found in df_dir are written to lists (rec_files, etc.). If it</span>
+<span class="comment">% didnt find any files, warning is thrown and user has option to place</span>
+<span class="comment">% files in df_dir</span>
+<span class="keyword">if</span> (isempty(rec_files) || size(hdr_files,1) ~= size(rec_files,1)) &amp;&amp; isempty(eeg_files)
+    <span class="keyword">while</span> true
+        [ufile,upath] = uigetfile;
+        <span class="keyword">if</span> isequal(ufile, 0)
+            <span class="keyword">if</span> user_yn(<span class="string">'exit prog? 1'</span>)
+                <span class="keyword">return</span>
+            <span class="keyword">end</span>
+        <span class="keyword">elseif</span> contains(ufile, <span class="string">'REC.mat'</span>)
+            load([upath erase(ufile,<span class="string">'REC.mat'</span>) <span class="string">'HDR.mat'</span>]);
+            load([upath ufile]);
+            eeg = false;
+            <span class="keyword">break</span>
+        <span class="keyword">elseif</span> contains(ufile, <span class="string">'.EDF'</span>) || contains(ufile, <span class="string">'.edf'</span>)
+            [Hdr, Rec] = edfread([upath ufile]);
+            save([df_dir erase(ufile, <span class="string">".EDF"</span>) <span class="string">'REC.mat'</span>], <span class="string">'Rec'</span>, <span class="string">'-v7.3'</span>);
+            save([df_dir erase(ufile, <span class="string">".EDF"</span>) <span class="string">'HDR.mat'</span>], <span class="string">'Hdr'</span>);
+            <span class="keyword">break</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">else</span>
+    file_idx = prompt(<span class="string">'choose file'</span>, full_files);
+<span class="keyword">end</span>
+
+
+<span class="comment">% Option to load in file. Saves user time if file already exists in ws</span>
+<span class="keyword">if</span> user_yn(<span class="string">'load file?'</span>)
+    <span class="keyword">if</span> contains(full_files(file_idx,:),<span class="string">'REC'</span>)
+        load([strtrim(erase(full_files(file_idx,:),<span class="string">'REC.mat'</span>)) <span class="string">'HDR.mat'</span>]);
+        load(full_files(file_idx,:));
+        eeg = false;
+    <span class="keyword">elseif</span> contains(full_files(file_idx,:),<span class="string">'dat'</span>)
+        load(full_files(file_idx,:));
+        eeg = true;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><h2 id="3">Prep Data</h2><pre class="codeinput"><span class="keyword">if</span> eeg  <span class="comment">% For data in EEG format</span>
+    <span class="comment">% Set data</span>
+    gdat = EEG.data;
+    glab = {EEG.chanlocs.labels};
+
+    <span class="comment">% Confirms with user whether or not the data has already been</span>
+    <span class="comment">% re-referenced. Necessary to load in the correct XL file.</span>
+    prompt(<span class="string">'disp channel labels'</span>, glab);
+    <span class="keyword">if</span> user_yn(<span class="string">'bipolar referenced?'</span>)
+        xl_name = sprintf(<span class="string">'%s_info_bipolar.xlsx'</span>, SUBID);
+        bp = 0;
+        ref = <span class="string">'bipolar'</span>;
+    <span class="keyword">else</span>
+        bp = user_yn(<span class="string">'rereference?'</span>);
+        <span class="keyword">if</span> bp
+            xl_name = sprintf(<span class="string">'%s_info_bipolar.xlsx'</span>, SUBID);
+            ref = <span class="string">'bipolar'</span>;
+        <span class="keyword">else</span>
+            xl_name = sprintf(<span class="string">'%s_info.xlsx'</span>, SUBID);
+            ref = <span class="string">'unipolar'</span>;
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    <span class="comment">% Set task</span>
+    task = strsplit(EEG.setname, <span class="string">'_'</span>);
+    task = char(task(end));
+
+    <span class="comment">% Set sampling rate</span>
+    fs = EEG.srate;
+
+    <span class="comment">% Stimulus events</span>
+    stim_evns = [EEG.event.latency]';
+
+    <span class="comment">% Reads in the appropriate info from pt-info XL file</span>
+    patinf = readtable(xl_name, <span class="string">'Sheet'</span>, task);
+
+    <span class="comment">% Wrap these to string to make matlab happy when appending to these</span>
+    patinf.Good_Channels = string(patinf.Good_Channels);
+    patinf.Excess_Channels = string(patinf.Excess_Channels);
+    patinf.Channel_Reject = string(patinf.Channel_Reject);
+    patinf.Event_Reject = string(patinf.Event_Reject);
+    patinf.Event_Types = string(patinf.Event_Types);
+
+<span class="keyword">else</span>  <span class="comment">% For data in Hdr/Rec format</span>
+    gdat = Rec;
+    glab = Hdr.label;
+
+    <span class="comment">% Enter sampling rate</span>
+    fs = prompt(<span class="string">'fs'</span>);
+
+    <span class="comment">% Define the current task</span>
+    task = prompt(<span class="string">'task'</span>, <span class="string">'StroopNamingVerbGen'</span>);
+
+
+    <span class="comment">% Prompt to re-reference or not</span>
+    bp = user_yn(<span class="string">'rereference?'</span>);
+    <span class="keyword">if</span> bp
+        xl_name = sprintf(<span class="string">'%s_info_bipolar.xlsx'</span>, SUBID);
+        ref = <span class="string">'bipolar'</span>;
+    <span class="keyword">else</span>
+        xl_name = sprintf(<span class="string">'%s_info.xlsx'</span>, SUBID);
+        ref = <span class="string">'unipolar'</span>;
+    <span class="keyword">end</span>
+
+
+    [gdat, stim_evns, ~, trim_save] = event_locater(gdat, glab, Rec, 0);
+
+    <span class="comment">% Load pt. excel file &amp; clean</span>
+    patinf = readtable(xl_name, <span class="string">'Sheet'</span>, task);
+    patinf(cellfun(@(x) isempty(x), patinf.Event_Types),:) = [];
+    patinf.Data_Start = nan(size(patinf,1),1);
+    patinf.Data_Stop = nan(size(patinf,1),1);
+    patinf.Data_Start(1) = trim_save(1);
+    patinf.Data_Stop(1) = trim_save(2);
+    patinf.Good_Channels = string(nan(size(patinf,1),1));
+    patinf.Excess_Channels = string(nan(size(patinf,1),1));
+    patinf.Channel_Reject = string(nan(size(patinf,1),1));
+    patinf.Event_Reject = string(patinf.Event_Reject);
+    patinf.Event_Types = string(patinf.Event_Types);
+    patinf.Stimulus_Event = [];
+    patinf.Stimulus_Event(1:length(stim_evns)) = stim_evns;
+
+<span class="keyword">end</span>
+</pre><h2 id="4">Bipolar Reference &amp; Remove excess channels manually</h2><pre class="codeinput"><span class="keyword">if</span> bp
+    disp(<span class="string">'Working...'</span>)
+    [gdat_r, glab_r] = bipolar_referencing(gdat, glab);
+
+    removed = <span class="string">''</span>;
+    <span class="keyword">while</span> true
+        chans = prompt(<span class="string">'remove channels'</span>, glab_r);
+        <span class="keyword">if</span> ~sum(chans == 0)
+            [gdat_r, glab_r, removed] = remove_channels(gdat_r, glab_r, chans, removed);
+        <span class="keyword">else</span>
+            <span class="keyword">break</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+
+    removed = strsplit(removed, <span class="string">','</span>);
+    nadd = size(patinf,1) - length(removed);
+    <span class="keyword">if</span> nadd &gt; 0
+        <span class="keyword">for</span> ii = 1:nadd
+            removed = [removed string(nan)];
+        <span class="keyword">end</span>
+        patinf.Excess_Channels = removed';
+    <span class="keyword">elseif</span> nadd &lt; 0
+        <span class="keyword">for</span> ii = 1:length(removed)
+            <span class="keyword">if</span> ii &gt; size(patinf,1)
+                patinf.Data_Start(ii) = nan;
+                patinf.Data_Stop(ii) = nan;
+                patinf.Good_Channels(ii) = string(nan);
+                patinf.Channel_Reject(ii) = string(nan);
+                patinf.Event_Reject_No(ii) = nan;
+                patinf.Event_Reject(ii) = string(nan);
+                patinf.Event_Types(ii) = string(nan);
+                patinf.Response_Time(ii) = nan;
+                patinf.Stimulus_Event(ii) = nan;
+            <span class="keyword">end</span>
+           patinf.Excess_Channels(ii) = removed{ii};
+        <span class="keyword">end</span>
+    <span class="keyword">else</span>
+        patinf.Excess_Channels = removed';
+    <span class="keyword">end</span>
+
+<span class="keyword">else</span>
+    gdat_r = gdat;
+    glab_r = glab;
+<span class="keyword">end</span>
+
+
+evn_typ = cellstr(patinf.Event_Types(~ismissing(patinf.Event_Types)));
+res_tm = patinf.Response_time;
+</pre><h2 id="5">Event Rejection &amp; Channel Rejection</h2><pre class="codeinput">bad_elecs = [];
+chan_rej = <span class="string">''</span>;
+alph_chk = {};
+k = 0;
+<span class="keyword">if</span> sum(~ismissing(patinf.Event_Reject)) == 0
+    patinf.Event_Reject = num2cell(patinf.Event_Reject);
+    rej_all_no = [];
+    rej_all = {};
+    num_evn_rej = 0;
+<span class="keyword">else</span>
+    num_evn_rej = find(isnan(patinf.Event_Reject_No),1)-1;
+    rej_all_no = patinf.Event_Reject_No(1:num_evn_rej);
+    rej_all = patinf.Event_Reject(1:num_evn_rej);
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> exist(<span class="string">'EEG'</span>, <span class="string">'var'</span>) &amp;&amp; ~isempty(EEG.notch)
+    flt = [EEG.notch -1];
+<span class="keyword">else</span>
+    flt = -1;
+<span class="keyword">end</span>
+
+EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID <span class="string">'_'</span> task], task, <span class="string">''</span>, ref, <span class="string">''</span>);
+
+<span class="comment">% channel/event selection &amp; eegplot</span>
+<span class="keyword">while</span> true
+
+    prompt(<span class="string">'rejected event/channel'</span>, evn_typ, stim_evns, rej_all_no, rej_all, chan_rej)
+
+    <span class="keyword">if</span> k == 0 || ~all(cellfun(@(x) isempty(x), alph_chk))
+        pop_eegplot(EEG);
+    <span class="keyword">end</span>
+
+    ecrej = prompt(<span class="string">'channels/events to reject'</span>);
+    ecrej = strsplit(ecrej);
+    alph_chk = cellfun(@(x) x(isstrprop(x,<span class="string">'alpha'</span>)),ecrej,<span class="string">'uni'</span>,0);
+
+    <span class="comment">% Reject Events</span>
+    rej_idx = cellfun(@(x) str2double(x), ecrej(2:end))';
+    <span class="keyword">if</span>  str2double(ecrej{1}) == 0
+        <span class="keyword">break</span>
+
+    <span class="keyword">elseif</span> strcmpi(ecrej{1}, <span class="string">'event'</span>)
+        <span class="keyword">if</span> strcmpi(ecrej{2}, <span class="string">'contains'</span>)
+            rej_idx = find(cellfun(@(x) contains(x, ecrej{3}), evn_typ) == 1);
+        <span class="keyword">else</span>
+            <span class="keyword">for</span> ii = 2:length(ecrej)
+                rej_idx = find(cellfun(@(x) strcmp(x, ecrej{ii}), evn_typ) == 1);
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+
+        <span class="keyword">for</span> ii = 1:length(rej_idx)
+            <span class="keyword">if</span> sum(rej_all_no == rej_idx(ii))
+                prompt(<span class="string">'skipping event'</span>, rej_idx(ii), evn_typ{rej_idx(ii)});
+                disp(msg)
+                rej_idx(ii) = -1;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+        rej_idx(rej_idx == -1) = [];
+        evn_rej = evn_typ(rej_idx);
+
+        rej_all_no = [rej_all_no; rej_idx];
+        rej_all = [rej_all; evn_rej];
+
+
+    <span class="comment">% Reject Channels</span>
+    <span class="keyword">elseif</span> strcmpi(ecrej{1}, <span class="string">'channel'</span>)
+        cnum_rej = [];
+        <span class="keyword">for</span> ii = 2:length(ecrej)
+            cnum_rej = [cnum_rej find(cellfun(@(x) strcmp(x,ecrej{ii}), glab_r))];
+        <span class="keyword">end</span>
+        [gdat_r, glab_r, chan_rej] = remove_channels(gdat_r, glab_r, cnum_rej, chan_rej);
+
+
+    <span class="keyword">else</span>
+        disp(<span class="string">'  '</span>)
+        disp(<span class="string">'Try again'</span>);
+        <span class="keyword">continue</span>
+    <span class="keyword">end</span>
+    k = k + 1;
+    EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID <span class="string">'_'</span> task], task, <span class="string">''</span>, ref, <span class="string">''</span>);
+<span class="keyword">end</span>
+</pre><h2 id="6">Save all edits to Patient table info</h2><pre class="codeinput">nadd = size(patinf,1) - length(rej_all);
+<span class="keyword">if</span> nadd &gt; 0
+    <span class="keyword">for</span> ii = 1:nadd
+        rej_all_no = [rej_all_no; nan];
+        rej_all = [rej_all; string(nan)];
+    <span class="keyword">end</span>
+    patinf.Event_Reject_No = rej_all_no;
+    patinf.Event_Reject = rej_all;
+<span class="keyword">elseif</span> nadd &lt; 0
+    <span class="keyword">for</span> ii = 1:length(rej_all)
+        <span class="keyword">if</span> ii &gt; size(patinf,1)
+            patinf.Data_Start(ii) = nan;
+            patinf.Data_Stop(ii) = nan;
+            patinf.Good_Channels(ii) = string(nan);
+            patinf.Excess_Channels(ii) = string(nan);
+            patinf.Channel_Reject(ii) = string(nan);
+            patinf.Event_Types(ii) = string(nan);
+            patinf.Response_Time(ii) = nan;
+            patinf.Stimulus_Event(ii) = nan;
+        <span class="keyword">end</span>
+        patinf.Event_Reject_No(ii) = rej_all_no{ii};
+        patinf.Event_Reject(ii) = rej_all{ii};
+    <span class="keyword">end</span>
+<span class="keyword">else</span>
+    patinf.Event_Reject_No = rej_all_no;
+    patinf.Event_Reject = rej_all;
+<span class="keyword">end</span>
+
+chan_rej = strsplit(chan_rej, <span class="string">','</span>);
+nadd = size(patinf,1) - length(chan_rej);
+<span class="keyword">if</span> nadd &gt; 0
+    <span class="keyword">for</span> ii = 1:nadd
+        chan_rej = [chan_rej string(nan)];
+    <span class="keyword">end</span>
+    patinf.Channel_Reject = chan_rej';
+<span class="keyword">elseif</span> nadd &lt; 0
+    <span class="keyword">for</span> ii = 1:length(chan_rej)
+        <span class="keyword">if</span> ii &gt; size(patinf,1)
+            patinf.Data_Start(ii) = nan;
+            patinf.Data_Stop(ii) = nan;
+            patinf.Good_Channels(ii) = string(nan);
+            patinf.Excess_Channels(ii) = string(nan);
+            patinf.Event_Reject_No(ii) = nan;
+            patinf.Event_Reject(ii) = string(nan);
+            patinf.Event_Types(ii) = string(nan);
+            patinf.Response_Time(ii) = nan;
+            patinf.Stimulus_Event(ii) = nan;
+        <span class="keyword">end</span>
+        patinf.Channel_Reject(ii) = chan_rej{ii};
+    <span class="keyword">end</span>
+<span class="keyword">else</span>
+    patinf.Channel_Reject = chan_rej';
+<span class="keyword">end</span>
+
+patinf.Good_Channels = string(patinf.Good_Channels);
+glab_r_table = glab_r;
+nadd = size(patinf,1) - length(glab_r_table);
+<span class="keyword">if</span> nadd &gt; 0
+    <span class="keyword">for</span> ii = 1:nadd
+        glab_r_table = [glab_r_table string(nan)];
+    <span class="keyword">end</span>
+    patinf.Good_Channels = glab_r_table';
+<span class="keyword">elseif</span> nadd &lt; 0
+    <span class="keyword">for</span> ii = 1:length(glab_r_table)
+        <span class="keyword">if</span> ii &gt; size(patinf,1)
+            patinf.Data_Start(ii) = nan;
+            patinf.Data_Stop(ii) = nan;
+            patinf.Excess_Channels(ii) = string(nan);
+            patinf.Channel_Reject(ii) = string(nan);
+            patinf.Event_Reject_No(ii) = nan;
+            patinf.Event_Reject(ii) = string(nan);
+            patinf.Event_Types(ii) = string(nan);
+            patinf.Response_Time(ii) = nan;
+            patinf.Stimulus_Event(ii) = nan;
+        <span class="keyword">end</span>
+        patinf.Good_Channels(ii) = glab_r_table{ii};
+    <span class="keyword">end</span>
+<span class="keyword">else</span>
+    patinf.Good_Channels = glab_r_table';
+<span class="keyword">end</span>
+</pre><h2 id="7">FILTER OUT 60 Hz LINE NOISE (If needed)</h2><pre class="codeinput"><span class="keyword">if</span> ~isempty(EEG.notch)
+    flt = prompt(<span class="string">'notch filt freq'</span>, EEG.notch(length(EEG.notch)));
+    flt = [EEG.notch flt];
+<span class="keyword">else</span>
+    flt = prompt(<span class="string">'notch filt freq'</span>);
+<span class="keyword">end</span>
+
+
+<span class="keyword">if</span> flt(end) &gt; -1
+    p = parpool;
+    gdat_r = remove_line_noise_par(gdat_r', flt(end), fs, 1)'; <span class="comment">%funciton written by Leon in order to notch filter the data.</span>
+    delete(p)
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> size(gdat_r, 1) &gt; size(gdat_r, 2)
+    gdat_r = gdat_r';
+<span class="keyword">end</span>
+EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID <span class="string">'_'</span> task], task, <span class="string">''</span>, ref, <span class="string">''</span>);
+</pre><h2 id="8">Save pre-processed data, Save Excel file</h2><pre class="codeinput">system(<span class="string">'taskkill /F /IM EXCEL.EXE'</span>);
+xlswrite([df_dir xl_name],nan(100,100), task)
+writetable(patinf, [df_dir xl_name], <span class="string">'Sheet'</span>, task)
+
+<span class="keyword">if</span> ~eeg || flt(end) ~= -1
+    <span class="keyword">if</span> user_yn(<span class="string">'save EEG?'</span>)
+        save([df_dir SUBID <span class="string">'_'</span> task <span class="string">'_'</span> ref <span class="string">'_dat.mat'</span>], <span class="string">'EEG'</span>)
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+close <span class="string">all</span>
+
+<span class="keyword">if</span> user_yn(<span class="string">'go to fba?'</span>)
+    run(<span class="string">'frequency_band_analysis.m'</span>)
+<span class="keyword">else</span>
+    disp(<span class="string">'Good-bye!'</span>)
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%%
+%   A user friendly command line interface program for loading iEEG data
+%   and preparing data for further analysis.
+%   User may
+%       - Load iEEG data that may be stored in a variety of formats
+%       - Annotate data by patient, patient task, reference type, etc.
+%       - Trim large amounts of unnecessary data for faster anaylsis
+%       - Find the indicies of Stimuls Onset events from subject task
+%       - Remove superfluous electrode channels data
+%       - Remove noisy or damaged channels from data
+%       - Reject Stimulus events based on known errors or noisy data
+%       - Notch filter line noise from data
+%       - Save all data, progress and annotations
+%
+%
+%   VARIABLE GUIDE:
+%
+%       PATH VARIABLES:
+%
+%           pth - path to the subject directory (./Subjs/"SUBID"/)
+%           df_dir - path to the ./Subjs/"SUBID"/Data Files directory
+%   
+%  
+%       SUBJECT/TASK VARIABLES:
+%
+%           SUBID - subject ID (i.e. SD16)
+%           task - task code name (i.e Naming)
+%
+%        
+%       OUTPUT FILES           
+%           
+%           gdat_r - all good electrode matrix (Channel x Time), in bipolar
+%                    unipolar format
+%           glab_r - channel labels corresponding to good channel data
+%           EEG - Contains all necessary information about the iEEG
+%                 recording in structure format including gdat_r and glab_r
+%
+%
+%       OUTSIDE SCRIPTS USED
+%
+%           eegplot - eeglab script for viewing data
+%
+
+warning('off')
+close all
+addpath('L:/iEEG_San_Diego/Functions/');
+subjs_dir = 'L:/iEEG_San_Diego/Subjs/';
+%subjs_pth = '/Users/connor-home/Desktop/LBDL/';
+cd(subjs_dir)
+
+d = dir;
+pts = {d.name};
+pts = pts(cellfun(@(x) contains(x,'SD'), pts));
+
+SUBID = prompt('define subject', subjs_dir, pts);
+
+subj_num = str2double(SUBID(regexp(SUBID,'\d')));
+
+pth = [subjs_dir SUBID '/'];
+
+% assigns data directory
+df_dir = [pth 'Data Files/'];                  
+   
+cd(df_dir);
+
+%% Load Rec/Hdr files & Patient Info table
+
+rec_files = dir('*REC.mat');
+hdr_files = dir('*HDR.mat');
+eeg_files = dir('*dat.mat');
+edf_files = dir('*.EDF');
+full_files = [{rec_files.name} {eeg_files.name}];
+rec_files = char({rec_files.name});
+hdr_files = char({hdr_files.name});
+eeg_files = char({eeg_files.name});
+full_files = char(full_files);
+
+% Files found in df_dir are written to lists (rec_files, etc.). If it
+% didnt find any files, warning is thrown and user has option to place
+% files in df_dir
+if (isempty(rec_files) || size(hdr_files,1) ~= size(rec_files,1)) && isempty(eeg_files)
+    while true
+        [ufile,upath] = uigetfile;
+        if isequal(ufile, 0)
+            if user_yn('exit prog? 1')
+                return
+            end
+        elseif contains(ufile, 'REC.mat')
+            load([upath erase(ufile,'REC.mat') 'HDR.mat']);
+            load([upath ufile]);
+            eeg = false;
+            break
+        elseif contains(ufile, '.EDF') || contains(ufile, '.edf')
+            [Hdr, Rec] = edfread([upath ufile]);
+            save([df_dir erase(ufile, ".EDF") 'REC.mat'], 'Rec', '-v7.3');
+            save([df_dir erase(ufile, ".EDF") 'HDR.mat'], 'Hdr');    
+            break
+        end
+    end
+else
+    file_idx = prompt('choose file', full_files);
+end
+
+
+% Option to load in file. Saves user time if file already exists in ws
+if user_yn('load file?')
+    if contains(full_files(file_idx,:),'REC')
+        load([strtrim(erase(full_files(file_idx,:),'REC.mat')) 'HDR.mat']);
+        load(full_files(file_idx,:));
+        eeg = false;
+    elseif contains(full_files(file_idx,:),'dat')
+        load(full_files(file_idx,:));
+        eeg = true;
+    end
+end
+
+
+
+%% Prep Data
+
+if eeg  % For data in EEG format
+    % Set data
+    gdat = EEG.data;
+    glab = {EEG.chanlocs.labels};
+    
+    % Confirms with user whether or not the data has already been
+    % re-referenced. Necessary to load in the correct XL file.
+    prompt('disp channel labels', glab);
+    if user_yn('bipolar referenced?')
+        xl_name = sprintf('%s_info_bipolar.xlsx', SUBID);
+        bp = 0; 
+        ref = 'bipolar';
+    else
+        bp = user_yn('rereference?');
+        if bp
+            xl_name = sprintf('%s_info_bipolar.xlsx', SUBID);
+            ref = 'bipolar';
+        else
+            xl_name = sprintf('%s_info.xlsx', SUBID);
+            ref = 'unipolar';
+        end
+    end
+    
+    % Set task
+    task = strsplit(EEG.setname, '_');
+    task = char(task(end));
+   
+    % Set sampling rate
+    fs = EEG.srate;
+    
+    % Stimulus events
+    stim_evns = [EEG.event.latency]';
+    
+    % Reads in the appropriate info from pt-info XL file
+    patinf = readtable(xl_name, 'Sheet', task);
+   
+    % Wrap these to string to make matlab happy when appending to these
+    patinf.Good_Channels = string(patinf.Good_Channels);
+    patinf.Excess_Channels = string(patinf.Excess_Channels);
+    patinf.Channel_Reject = string(patinf.Channel_Reject);
+    patinf.Event_Reject = string(patinf.Event_Reject);
+    patinf.Event_Types = string(patinf.Event_Types);
+        
+else  % For data in Hdr/Rec format
+    gdat = Rec;
+    glab = Hdr.label;
+    
+    % Enter sampling rate
+    fs = prompt('fs');
+    
+    % Define the current task
+    task = prompt('task', 'StroopNamingVerbGen');
+    
+    
+    % Prompt to re-reference or not
+    bp = user_yn('rereference?');
+    if bp
+        xl_name = sprintf('%s_info_bipolar.xlsx', SUBID);
+        ref = 'bipolar';
+    else
+        xl_name = sprintf('%s_info.xlsx', SUBID);
+        ref = 'unipolar';
+    end
+
+
+    [gdat, stim_evns, ~, trim_save] = event_locater(gdat, glab, Rec, 0);
+    
+    % Load pt. excel file & clean
+    patinf = readtable(xl_name, 'Sheet', task);
+    patinf(cellfun(@(x) isempty(x), patinf.Event_Types),:) = [];
+    patinf.Data_Start = nan(size(patinf,1),1);
+    patinf.Data_Stop = nan(size(patinf,1),1);
+    patinf.Data_Start(1) = trim_save(1);
+    patinf.Data_Stop(1) = trim_save(2);
+    patinf.Good_Channels = string(nan(size(patinf,1),1));
+    patinf.Excess_Channels = string(nan(size(patinf,1),1));
+    patinf.Channel_Reject = string(nan(size(patinf,1),1));
+    patinf.Event_Reject = string(patinf.Event_Reject);
+    patinf.Event_Types = string(patinf.Event_Types);
+    patinf.Stimulus_Event = [];
+    patinf.Stimulus_Event(1:length(stim_evns)) = stim_evns;
+
+end
+
+
+%% Bipolar Reference & Remove excess channels manually
+if bp
+    disp('Working...') 
+    [gdat_r, glab_r] = bipolar_referencing(gdat, glab);
+
+    removed = '';
+    while true
+        chans = prompt('remove channels', glab_r);
+        if ~sum(chans == 0)
+            [gdat_r, glab_r, removed] = remove_channels(gdat_r, glab_r, chans, removed);
+        else
+            break
+        end
+    end
+
+    removed = strsplit(removed, ',');
+    nadd = size(patinf,1) - length(removed);
+    if nadd > 0
+        for ii = 1:nadd
+            removed = [removed string(nan)];
+        end
+        patinf.Excess_Channels = removed';
+    elseif nadd < 0
+        for ii = 1:length(removed)
+            if ii > size(patinf,1)
+                patinf.Data_Start(ii) = nan;
+                patinf.Data_Stop(ii) = nan;
+                patinf.Good_Channels(ii) = string(nan);
+                patinf.Channel_Reject(ii) = string(nan);
+                patinf.Event_Reject_No(ii) = nan;
+                patinf.Event_Reject(ii) = string(nan);
+                patinf.Event_Types(ii) = string(nan);
+                patinf.Response_Time(ii) = nan;
+                patinf.Stimulus_Event(ii) = nan;
+            end
+           patinf.Excess_Channels(ii) = removed{ii};
+        end
+    else
+        patinf.Excess_Channels = removed';
+    end
+
+else
+    gdat_r = gdat;
+    glab_r = glab;
+end
+
+
+evn_typ = cellstr(patinf.Event_Types(~ismissing(patinf.Event_Types)));
+res_tm = patinf.Response_time;
+
+
+%% Event Rejection & Channel Rejection
+bad_elecs = [];
+chan_rej = '';
+alph_chk = {};
+k = 0;
+if sum(~ismissing(patinf.Event_Reject)) == 0
+    patinf.Event_Reject = num2cell(patinf.Event_Reject);
+    rej_all_no = [];
+    rej_all = {};
+    num_evn_rej = 0;
+else
+    num_evn_rej = find(isnan(patinf.Event_Reject_No),1)-1;
+    rej_all_no = patinf.Event_Reject_No(1:num_evn_rej);
+    rej_all = patinf.Event_Reject(1:num_evn_rej);
+end
+
+if exist('EEG', 'var') && ~isempty(EEG.notch) 
+    flt = [EEG.notch -1];
+else
+    flt = -1;
+end
+
+EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID '_' task], task, '', ref, '');
+
+% channel/event selection & eegplot
+while true
+    
+    prompt('rejected event/channel', evn_typ, stim_evns, rej_all_no, rej_all, chan_rej)
+
+    if k == 0 || ~all(cellfun(@(x) isempty(x), alph_chk))
+        pop_eegplot(EEG);
+    end
+
+    ecrej = prompt('channels/events to reject');
+    ecrej = strsplit(ecrej);
+    alph_chk = cellfun(@(x) x(isstrprop(x,'alpha')),ecrej,'uni',0);
+
+    % Reject Events
+    rej_idx = cellfun(@(x) str2double(x), ecrej(2:end))';
+    if  str2double(ecrej{1}) == 0
+        break
+        
+    elseif strcmpi(ecrej{1}, 'event') 
+        if strcmpi(ecrej{2}, 'contains')
+            rej_idx = find(cellfun(@(x) contains(x, ecrej{3}), evn_typ) == 1);
+        else
+            for ii = 2:length(ecrej)
+                rej_idx = find(cellfun(@(x) strcmp(x, ecrej{ii}), evn_typ) == 1);
+            end
+        end
+
+        for ii = 1:length(rej_idx)
+            if sum(rej_all_no == rej_idx(ii))
+                prompt('skipping event', rej_idx(ii), evn_typ{rej_idx(ii)});
+                disp(msg)
+                rej_idx(ii) = -1;
+            end
+        end
+        rej_idx(rej_idx == -1) = [];
+        evn_rej = evn_typ(rej_idx);
+
+        rej_all_no = [rej_all_no; rej_idx];
+        rej_all = [rej_all; evn_rej];
+
+
+    % Reject Channels
+    elseif strcmpi(ecrej{1}, 'channel')
+        cnum_rej = [];
+        for ii = 2:length(ecrej)
+            cnum_rej = [cnum_rej find(cellfun(@(x) strcmp(x,ecrej{ii}), glab_r))];
+        end
+        [gdat_r, glab_r, chan_rej] = remove_channels(gdat_r, glab_r, cnum_rej, chan_rej);
+        
+        
+    else
+        disp('  ')
+        disp('Try again');
+        continue
+    end
+    k = k + 1;
+    EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID '_' task], task, '', ref, '');
+end
+
+
+
+
+%% Save all edits to Patient table info
+nadd = size(patinf,1) - length(rej_all);
+if nadd > 0
+    for ii = 1:nadd
+        rej_all_no = [rej_all_no; nan];
+        rej_all = [rej_all; string(nan)];
+    end
+    patinf.Event_Reject_No = rej_all_no;
+    patinf.Event_Reject = rej_all;
+elseif nadd < 0
+    for ii = 1:length(rej_all)
+        if ii > size(patinf,1)
+            patinf.Data_Start(ii) = nan;
+            patinf.Data_Stop(ii) = nan;
+            patinf.Good_Channels(ii) = string(nan);
+            patinf.Excess_Channels(ii) = string(nan);
+            patinf.Channel_Reject(ii) = string(nan);
+            patinf.Event_Types(ii) = string(nan);
+            patinf.Response_Time(ii) = nan;
+            patinf.Stimulus_Event(ii) = nan;
+        end
+        patinf.Event_Reject_No(ii) = rej_all_no{ii};
+        patinf.Event_Reject(ii) = rej_all{ii};
+    end
+else
+    patinf.Event_Reject_No = rej_all_no;
+    patinf.Event_Reject = rej_all;
+end
+
+chan_rej = strsplit(chan_rej, ',');
+nadd = size(patinf,1) - length(chan_rej);
+if nadd > 0
+    for ii = 1:nadd
+        chan_rej = [chan_rej string(nan)];
+    end
+    patinf.Channel_Reject = chan_rej';
+elseif nadd < 0
+    for ii = 1:length(chan_rej)
+        if ii > size(patinf,1)
+            patinf.Data_Start(ii) = nan;
+            patinf.Data_Stop(ii) = nan;
+            patinf.Good_Channels(ii) = string(nan);
+            patinf.Excess_Channels(ii) = string(nan);
+            patinf.Event_Reject_No(ii) = nan;
+            patinf.Event_Reject(ii) = string(nan);
+            patinf.Event_Types(ii) = string(nan);
+            patinf.Response_Time(ii) = nan;
+            patinf.Stimulus_Event(ii) = nan;
+        end
+        patinf.Channel_Reject(ii) = chan_rej{ii};
+    end
+else
+    patinf.Channel_Reject = chan_rej';
+end
+       
+patinf.Good_Channels = string(patinf.Good_Channels);
+glab_r_table = glab_r;
+nadd = size(patinf,1) - length(glab_r_table);
+if nadd > 0
+    for ii = 1:nadd
+        glab_r_table = [glab_r_table string(nan)];
+    end
+    patinf.Good_Channels = glab_r_table';
+elseif nadd < 0
+    for ii = 1:length(glab_r_table)
+        if ii > size(patinf,1)
+            patinf.Data_Start(ii) = nan;
+            patinf.Data_Stop(ii) = nan;
+            patinf.Excess_Channels(ii) = string(nan);
+            patinf.Channel_Reject(ii) = string(nan);
+            patinf.Event_Reject_No(ii) = nan;
+            patinf.Event_Reject(ii) = string(nan);
+            patinf.Event_Types(ii) = string(nan);
+            patinf.Response_Time(ii) = nan;
+            patinf.Stimulus_Event(ii) = nan;
+        end
+        patinf.Good_Channels(ii) = glab_r_table{ii};
+    end
+else
+    patinf.Good_Channels = glab_r_table';
+end
+
+
+
+
+%% FILTER OUT 60 Hz LINE NOISE (If needed)
+if ~isempty(EEG.notch)
+    flt = prompt('notch filt freq', EEG.notch(length(EEG.notch)));
+    flt = [EEG.notch flt];
+else
+    flt = prompt('notch filt freq');
+end
+
+
+if flt(end) > -1
+    p = parpool;
+    gdat_r = remove_line_noise_par(gdat_r', flt(end), fs, 1)'; %funciton written by Leon in order to notch filter the data.
+    delete(p)
+end
+
+if size(gdat_r, 1) > size(gdat_r, 2)
+    gdat_r = gdat_r';
+end
+EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, -1, flt, [SUBID '_' task], task, '', ref, '');
+
+
+
+
+%% Save pre-processed data, Save Excel file
+
+system('taskkill /F /IM EXCEL.EXE');
+xlswrite([df_dir xl_name],nan(100,100), task)
+writetable(patinf, [df_dir xl_name], 'Sheet', task)
+
+if ~eeg || flt(end) ~= -1
+    if user_yn('save EEG?')
+        save([df_dir SUBID '_' task '_' ref '_dat.mat'], 'EEG')
+    end
+end
+
+close all
+
+if user_yn('go to fba?')
+    run('frequency_band_analysis.m')
+else
+    disp('Good-bye!')
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### SOURCE END #####
+--></body></html>
