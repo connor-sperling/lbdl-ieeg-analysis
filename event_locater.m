@@ -1,4 +1,4 @@
-function [gdat, stimos, jit, trim_save] = event_locater(gdat, glab, Rec, jitter)  
+function [gdat, stimos, jit, xrng, yrng] = event_locater(gdat, glab, Rec, jitter)  
 
     trig_idx = find(cellfun(@(x)isequal(x,'TRIG'),glab));
     trigchan = gdat(trig_idx,:);
@@ -17,11 +17,12 @@ function [gdat, stimos, jit, trim_save] = event_locater(gdat, glab, Rec, jitter)
 
     gdat = gdat(:,trim_rng(1):trim_rng(2));
     trigchan = trigchan(trim_rng(1):trim_rng(2));
-    trim_save = trim_rng;
+    xrng = trim_rng;
     figure
     plot(trigchan)
     
     evns_value_rng = input('\nEnter y-axis range that captures stimulus onset (middle) spikes in plot\nIf you wish to reset the range, type Y at the next prompt\n   Format: [min, max]\n--> ');
+    yrng = evns_value_rng';
     stimos = find(trigchan > evns_value_rng(1) & trigchan < evns_value_rng(2));
     de = diff(stimos);
     unique_msk = [true de ~= 1];
@@ -58,7 +59,7 @@ function [gdat, stimos, jit, trim_save] = event_locater(gdat, glab, Rec, jitter)
     reset = input(msg, 's');
     if strcmpi(reset, 'reset')
         gdat = Rec;
-        [gdat, stimos, trim_save] = event_locater(gdat, glab, Rec, 0);
+        [gdat, stimos, xrng, yrng] = event_locater(gdat, glab, Rec, 0);
     end
     
     if jitter == 1
@@ -67,4 +68,5 @@ function [gdat, stimos, jit, trim_save] = event_locater(gdat, glab, Rec, jitter)
         jit = nan;
     end
     
+    xrng = xrng';
 end

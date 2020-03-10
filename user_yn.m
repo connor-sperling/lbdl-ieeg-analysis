@@ -8,17 +8,23 @@ function binary = user_yn(pmt, varargin)
         case 'load file?'
             msg = '\nWould you like to load in this file?';
             
+        case 'change code?'
+            msg = '\nWould you like to change the event code names?';
+            
         case 'bipolar referenced?'
             msg = '\nIs this bipolar referenced data?';
             
         case 'rereference?'
             msg = '\nWould you like to re-reference this data?';
             
+        case 'save evn info?'
+            msg = '\nDo you want to save this updated stimulus event information?';
+            
         case 'save EEG?'
             msg = '\nDo you want to save your work?';
             
-        case 'go to fba?'
-            msg = '\nWould you like to continue to Frequency Band Analysis?';
+        case 'process another?'
+            msg = '\nWould you like to process another patient?';
             
         case 'prep ALL again?'
             msg = sprintf('\nIt looks like you have already processed this data across ALL events for %s analysis\nWould you like to do it again?',  varargin{1});

@@ -123,13 +123,14 @@ function plot_stroop(dat_files, resp, pth, subj, fs, lock, ref)
     glb_max = max([max_cb max_ce max_sb max_se]);
     glb_min = min([min_cb min_ce min_sb min_se]);
     
+    tsamp = 1:(en_tm-st_tm)*fs/1000;
     tms = st_tm:1000/fs:en_tm;
     
     subplot(2,2,1); hold on;
-    X(:,1) = plot(tms, cCcB_dat, 'color', c1, 'Linewidth', 2, 'DisplayName', 'cCc');
-    X(:,2) = plot(tms, cIcB_dat, 'color', c2, 'Linewidth', 2, 'DisplayName', 'cIc');
-    X(:,3) = plot(tms, cCsB_dat, 'color', c3, 'Linewidth', 2, 'DisplayName', 'cCs');
-    X(:,4) = plot(tms, cIsB_dat, 'color', c4, 'Linewidth', 2, 'DisplayName', 'cIs');
+    X(:,1) = plot(tms, cCcB_dat(tsamp), 'color', c1, 'Linewidth', 2, 'DisplayName', 'cCc');
+    X(:,2) = plot(tms, cIcB_dat(tsamp), 'color', c2, 'Linewidth', 2, 'DisplayName', 'cIc');
+    X(:,3) = plot(tms, cCsB_dat(tsamp), 'color', c3, 'Linewidth', 2, 'DisplayName', 'cCs');
+    X(:,4) = plot(tms, cIsB_dat(tsamp), 'color', c4, 'Linewidth', 2, 'DisplayName', 'cIs');
     plot([st_tm en_tm], [0 0],'k','LineWidth',1);
 %     h = fill([tms fliplr(tms)],shadow,[200/255, 200/255, 200/255]);
 %     set(h,'EdgeColor',[200/255, 200/255, 200/255],'FaceAlpha',.7,'EdgeAlpha',.7);%set edge color
@@ -147,10 +148,10 @@ function plot_stroop(dat_files, resp, pth, subj, fs, lock, ref)
     hold off;
     
     subplot(2,2,2); hold on;
-    X(:,1) = plot(tms, cCcE_dat, 'color', c1, 'Linewidth', 2, 'DisplayName', 'cCc');
-    X(:,2) = plot(tms, cIcE_dat, 'color', c2, 'Linewidth', 2, 'DisplayName', 'cIc');
-    X(:,3) = plot(tms, cCsE_dat, 'color', c3, 'Linewidth', 2, 'DisplayName', 'cCs');
-    X(:,4) = plot(tms, cIsE_dat, 'color', c4, 'Linewidth', 2, 'DisplayName', 'cIs');
+    X(:,1) = plot(tms, cCcE_dat(tsamp), 'color', c1, 'Linewidth', 2, 'DisplayName', 'cCc');
+    X(:,2) = plot(tms, cIcE_dat(tsamp), 'color', c2, 'Linewidth', 2, 'DisplayName', 'cIc');
+    X(:,3) = plot(tms, cCsE_dat(tsamp), 'color', c3, 'Linewidth', 2, 'DisplayName', 'cCs');
+    X(:,4) = plot(tms, cIsE_dat(tsamp), 'color', c4, 'Linewidth', 2, 'DisplayName', 'cIs');
     plot([st_tm en_tm], [0 0],'k','LineWidth',1);
 %     h = fill([tms fliplr(tms)],shadow,[200/255, 200/255, 200/255]);
 %     set(h,'EdgeColor',[200/255, 200/255, 200/255],'FaceAlpha',.7,'EdgeAlpha',.7);%set edge color
@@ -168,10 +169,10 @@ function plot_stroop(dat_files, resp, pth, subj, fs, lock, ref)
     hold off;
     
     subplot(2,2,3); hold on;
-    X(:,1) = plot(tms, sCcB_dat, 'color', c1, 'Linewidth', 2, 'DisplayName', 'sCc');
-    X(:,2) = plot(tms, sIcB_dat, 'color', c2, 'Linewidth', 2, 'DisplayName', 'sIc');
-    X(:,3) = plot(tms, sCsB_dat, 'color', c3, 'Linewidth', 2, 'DisplayName', 'sCs');
-    X(:,4) = plot(tms, sIsB_dat, 'color', c4, 'Linewidth', 2, 'DisplayName', 'sIs');
+    X(:,1) = plot(tms, sCcB_dat(tsamp), 'color', c1, 'Linewidth', 2, 'DisplayName', 'sCc');
+    X(:,2) = plot(tms, sIcB_dat(tsamp), 'color', c2, 'Linewidth', 2, 'DisplayName', 'sIc');
+    X(:,3) = plot(tms, sCsB_dat(tsamp), 'color', c3, 'Linewidth', 2, 'DisplayName', 'sCs');
+    X(:,4) = plot(tms, sIsB_dat(tsamp), 'color', c4, 'Linewidth', 2, 'DisplayName', 'sIs');
     plot([st_tm en_tm], [0 0],'k','LineWidth',1);
 %     h = fill([tms fliplr(tms)],shadow,[200/255, 200/255, 200/255]);
 %     set(h,'EdgeColor',[200/255, 200/255, 200/255],'FaceAlpha',.7,'EdgeAlpha',.7);%set edge color
@@ -189,10 +190,10 @@ function plot_stroop(dat_files, resp, pth, subj, fs, lock, ref)
     hold off;
     
     subplot(2,2,4); hold on;
-    X(:,1) = plot(tms, sCcE_dat, 'color', c1, 'Linewidth', 2, 'DisplayName', 'sCc');
-    X(:,2) = plot(tms, sIcE_dat, 'color', c2, 'Linewidth', 2, 'DisplayName', 'sIc');
-    X(:,3) = plot(tms, sCsE_dat, 'color', c3, 'Linewidth', 2, 'DisplayName', 'sCs');
-    X(:,4) = plot(tms, sIsE_dat, 'color', c4, 'Linewidth', 2, 'DisplayName', 'sIs');
+    X(:,1) = plot(tms, sCcE_dat(tsamp), 'color', c1, 'Linewidth', 2, 'DisplayName', 'sCc');
+    X(:,2) = plot(tms, sIcE_dat(tsamp), 'color', c2, 'Linewidth', 2, 'DisplayName', 'sIc');
+    X(:,3) = plot(tms, sCsE_dat(tsamp), 'color', c3, 'Linewidth', 2, 'DisplayName', 'sCs');
+    X(:,4) = plot(tms, sIsE_dat(tsamp), 'color', c4, 'Linewidth', 2, 'DisplayName', 'sIs');
     plot([st_tm en_tm], [0 0],'k','LineWidth',1);
 %     h = fill([tms fliplr(tms)],shadow,[200/255, 200/255, 200/255]);
 %     set(h,'EdgeColor',[200/255, 200/255, 200/255],'FaceAlpha',.7,'EdgeAlpha',.7);%set edge color

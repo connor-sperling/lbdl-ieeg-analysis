@@ -1,7 +1,7 @@
 %%
 %   A user friendly command line interface program for loading iEEG data
 %   and preparing data for further analysis.
-%   User may
+%   User mays
 %       - Load iEEG data that may be stored in a variety of formats
 %       - Annotate data by patient, patient task, reference type, etc.
 %       - Trim large amounts of unnecessary data for faster anaylsis
@@ -60,32 +60,46 @@
 %           usr_yn
 % 
 %
-%       OUTSIDE SCRIPTS USED
+%       OUTSIDE SCRIPTS & PACKAGES USED
 %
-%           eegplot - eeglab script for viewing data
+%           eeglab
 %           edfread
+
+%% Define subject & set paths
 
 warning('off')
 close all
-addpath('L:/iEEG_San_Diego/Functions/');
-subjs_dir = 'L:/iEEG_San_Diego/Subjs/';
+clearvars -except Rec Hdr EEG EEGr
+clc
+
+if ispc
+    addpath('L:/iEEG_San_Diego/Functions/');
+    subjs_dir = 'L:/iEEG_San_Diego/Subjs/';
+elseif isunix
+%     addpath('/mnt/bdl-raw/iEEG_San_Diego/Functions');
+    addpath('/home/bdl/Desktop/iEEG/Functions');
+%     subjs_dir = '/mnt/bdl-raw/iEEG_San_Diego/Subjs';
+    subjs_dir = '/home/bdl/Desktop/iEEG/Subjs';
+%     diary '~/Desktop/iEEG/Subjs/prog_log.txt';
+end
+
 cd(subjs_dir)
 
 d = dir;
 pts = {d.name};
 pts = pts(cellfun(@(x) contains(x,'SD'), pts));
 
-SUBID = prompt('define subject', subjs_dir, pts);
+subj = prompt('define subject', subjs_dir, pts);
 
-subj_num = str2double(SUBID(regexp(SUBID,'\d')));
+subj_num = str2double(subj(regexp(subj,'\d')));
 
-pth = [subjs_dir SUBID '/'];
+pth = sprintf('%s/%s', subjs_dir, subj);
 
 % assigns data directory
-df_dir = [pth 'Data Files/'];                  
+df_dir = sprintf('%s/Data Files/', pth);                  
    
 
-%% Load Rec/Hdr files & Patient Info table
+%% Choose and load data
 
 cd(df_dir);
 
@@ -130,375 +144,343 @@ end
 if user_yn('load file?')
     if contains(full_files(file_idx,:),'REC')
         load([strtrim(erase(full_files(file_idx,:),'REC.mat')) 'HDR.mat']);
-        load(full_files(file_idx,:));
-        eeg = false;
-    elseif contains(full_files(file_idx,:),'dat')
-        load(full_files(file_idx,:));
-        eeg = true;
+        load(strtrim(full_files(file_idx,:)));
     elseif contains(full_files(file_idx,:),'edf') || contains(full_files(file_idx,:),'EDF')
-        [Hdr, Rec] = edfread(full_files(file_idx,:));
+        [Hdr, Rec] = edfread(strtrim(full_files(file_idx,:)));
         save([df_dir strtrim(erase(full_files(file_idx,:), ".EDF")) 'REC.mat'], 'Rec', '-v7.3');
-        save([df_dir strtrim(erase(full_files(file_idx,:), ".EDF")) 'HDR.mat'], 'Hdr'); 
-        eeg = false;
+        save([df_dir strtrim(erase(full_files(file_idx,:), ".EDF")) 'HDR.mat'], 'Hdr');
+    elseif contains(full_files(file_idx,:),'dat')
+        load(strtrim(full_files(file_idx,:)));
     end
 end
 
 
 
-%% Prep Data
+if contains(full_files(file_idx,:),'REC') || contains(full_files(file_idx,:),'edf') || contains(full_files(file_idx,:),'EDF')
+    eeg = false;
+    clear EEG
+elseif contains(full_files(file_idx,:),'dat')
+    eeg = true;
+end
+
+
+%% Define parameters
+
+rsearch = prompt('research study');
 
 if eeg  % For data in EEG format
-    % Set data
-    gdat = EEG.data;
-    glab = {EEG.chanlocs.labels};
+    gdat = EEGr.data;
+    glab = {EEGr.chanlocs.labels};
     
-    % Confirms with user whether or not the data has already been
-    % re-referenced. Necessary to load in the correct XL file.
-    prompt('disp channel labels', glab);
-    if user_yn('bipolar referenced?')
-        xl_name = sprintf('%s_info_bipolar.xlsx', SUBID);
-        bp = 0; 
-        ref = 'bipolar';
-    else
-        bp = user_yn('rereference?');
-        if bp
-            xl_name = sprintf('%s_info_bipolar.xlsx', SUBID);
-            ref = 'bipolar';
-        else
-            xl_name = sprintf('%s_info.xlsx', SUBID);
-            ref = 'unipolar';
-        end
-    end
-    
-    % Set task
-    task = strsplit(EEG.setname, '_');
+    task = strsplit(EEGr.setname, '_');
     task = char(task(end));
-   
-    % Set sampling rate
-    fs = EEG.srate;
+    fs = EEGr.srate;
     
-    % Stimulus events
-    stim_evns = [EEG.event.latency]';
+    rtm = [EEGr.event.resp]';
+    evn = {EEGr.event.type}';
     
-    % Reads in the appropriate info from pt-info XL file
-    patinf = readtable(xl_name, 'Sheet', task);
-   
-    % Wrap these to string to make matlab happy when appending to these
-    patinf.Good_Channels = string(patinf.Good_Channels);
-    patinf.Excess_Channels = string(patinf.Excess_Channels);
-    patinf.Channel_Reject = string(patinf.Channel_Reject);
-    patinf.Event_Reject = string(patinf.Event_Reject);
-    patinf.Event_Types = string(patinf.Event_Types);
+    evn_idc = [EEGr.event.latency]';  
+    
+    prompt('disp event labels', evn);
+    if user_yn('change code?')
+        cv = readtable(sprintf('%s/%s_CV_%s.xlsx', df_dir, subj, task));
+        [nevn, rtm] = make_evn_codes(cv);
+        an_evn_msk = ismember(evn,{EEGr.analysis.type}');
+        new_an_evn = nevn(an_evn_msk);
+        if ~isempty(new_an_evn)
+            olevn_rej = evn(~an_evn_msk);
+            evn_rej = nevn(~an_evn_msk);
+        else
+            olevn_rej = {};
+            evn_rej = {};
+        end
+        EEGr = make_EEG(EEGr, 'AnalysisEventIdx', [EEGr.analysis.latency]', 'AnalysisEventType', new_an_evn, 'AnalysisResponseTime', [EEGr.analysis.resp]', 'EventIndex', evn_idc, 'EventType', nevn, 'ResponseTime', rtm, 'EventReject', evn_rej);
+        EEG = make_EEG(EEG, 'AnalysisEventIdx', [EEGr.analysis.latency]', 'AnalysisEventType', new_an_evn, 'AnalysisResponseTime', [EEGr.analysis.resp]', 'EventIndex', evn_idc, 'EventType', nevn, 'ResponseTime', rtm, 'EventReject', evn_rej);
+        olevn = evn;
         
+        evn = nevn;
+    end
+    excess_chans = {EEG.reject.excess}';
+    edat = [];
+    
 else  % For data in Hdr/Rec format
     gdat = Rec;
     glab = Hdr.label;
+    EEGr = make_EEG();
+    EEG = make_EEG();
     
-    % Enter sampling rate
     fs = prompt('fs');
+    task = prompt('task name', 'StroopNamingVerbGenStroop1Stroop2');
     
-    % Define the current task
-    task = prompt('task name', 'StroopNamingVerbGen');
+    cv = readtable(sprintf('%s/%s_CV_%s.xlsx', df_dir, subj, task));
+    [evn, rtm] = make_evn_codes(cv);
     
     
-    % Prompt to re-reference or not
-    bp = user_yn('rereference?');
-    if bp
-        xl_name = sprintf('%s_info_bipolar.xlsx', SUBID);
-        ref = 'bipolar';
-    else
-        xl_name = sprintf('%s_info.xlsx', SUBID);
-        ref = 'unipolar';
-    end
-
-
-    [gdat, stim_evns, ~, trim_save] = event_locater(gdat, glab, Rec, 0);
+    [gdat, evn_idc, ~, xrng, yrng] = event_locater(gdat, glab, Rec, 0);
     
-    % Load pt. excel file & clean
-    patinf = readtable(xl_name, 'Sheet', task);
-    patinf(cellfun(@(x) isempty(x), patinf.Event_Types),:) = [];
-    patinf.Data_Start = nan(size(patinf,1),1);
-    patinf.Data_Stop = nan(size(patinf,1),1);
-    patinf.Data_Start(1) = trim_save(1);
-    patinf.Data_Stop(1) = trim_save(2);
-    patinf.Good_Channels = string(nan(size(patinf,1),1));
-    patinf.Excess_Channels = string(nan(size(patinf,1),1));
-    patinf.Channel_Reject = string(nan(size(patinf,1),1));
-    patinf.Event_Reject = string(patinf.Event_Reject);
-    patinf.Event_Types = string(patinf.Event_Types);
-    patinf.Stimulus_Event = [];
-    patinf.Stimulus_Event(1:length(stim_evns)) = stim_evns;
-
-end
-
-
-%% Bipolar Reference & Remove excess channels manually
-if bp
-    disp('Working...') 
-    [gdat_r, glab_r] = bipolar_referencing(gdat, glab);
-
-    removed = '';
+    evnx = xrng;
+    evny = yrng;
+    
+    EEGr = make_EEG(EEGr, 'Name', [subj '_' task], 'srate', fs, 'EventIndex', evn_idc, 'EventType', evn, 'ResponseTime', rtm);
+    EEG = make_EEG(EEG, 'Name', [subj '_' task], 'srate', fs, 'EventIndex', evn_idc, 'EventType', evn, 'ResponseTime', rtm);
+    
+    excess_chans = {};
+    edat = [];
+    
     while true
-        chans = prompt('remove channels', glab_r);
+        chans = prompt('remove channels', glab);
         if ~sum(chans == 0)
-            [gdat_r, glab_r, removed] = remove_channels(gdat_r, glab_r, chans, removed);
+            [gdat, glab, edat, excess_chans] = remove_channels(gdat, glab, chans, edat, excess_chans);
         else
             break
         end
     end
 
-    removed = strsplit(removed, ',');
-    nadd = size(patinf,1) - length(removed);
-    if nadd > 0
-        for ii = 1:nadd
-            removed = [removed string(nan)];
-        end
-        patinf.Excess_Channels = removed';
-    elseif nadd < 0
-        for ii = 1:length(removed)
-            if ii > size(patinf,1)
-                patinf.Data_Start(ii) = nan;
-                patinf.Data_Stop(ii) = nan;
-                patinf.Good_Channels(ii) = string(nan);
-                patinf.Channel_Reject(ii) = string(nan);
-                patinf.Event_Reject_No(ii) = nan;
-                patinf.Event_Reject(ii) = string(nan);
-                patinf.Event_Types(ii) = string(nan);
-                patinf.Response_Time(ii) = nan;
-                patinf.Stimulus_Event(ii) = nan;
-            end
-           patinf.Excess_Channels(ii) = removed{ii};
-        end
-    else
-        patinf.Excess_Channels = removed';
-    end
+    EEG = make_EEG(EEG, 'dat', gdat, 'labels', glab, 'ExcessChans', excess_chans, 'ExcessChansData', edat, 'reference', 'unipolar');
+    
+end
 
+
+%% Bipolar Reference
+
+
+prompt('disp channel labels', glab);
+if user_yn('bipolar referenced?') 
+    bp = 0;
+    ref = 'bipolar';
+else
+    bp = user_yn('rereference?');
+    if bp
+        ref = 'bipolar';
+    else
+        ref = 'unipolar';
+    end
+end
+
+if bp
+    disp('Working...') 
+    [gdat_r, glab_r] = bipolar_referencing(gdat, glab);
 else
     gdat_r = gdat;
     glab_r = glab;
 end
 
+EEGr = make_EEG(EEGr, 'dat', gdat_r, 'labels', glab_r, 'ExcessChans', excess_chans, 'ExcessChansData', edat, 'reference', ref);
 
-evn_typ = cellstr(patinf.Event_Types(cellfun(@(x) ~isempty(x), cellstr(patinf.Event_Types))));
-res_tm = patinf.Response_time;
+
+
+%% Filter Line Noise
+
+if ~isempty(EEGr.notch)
+    numf = length(EEGr.notch);
+    flt = prompt('notch filt freq', EEGr.notch);
+    flt = [EEGr.notch flt];
+else
+    numf = 0;
+    flt = prompt('notch filt freq');
+end
+
+if flt(end) > -1
+    p = parpool;
+    for f = numf+1:length(flt)
+        gdat_r = remove_line_noise_par(gdat_r', flt(f), fs, 1)'; %funciton written by Leon in order to notch filter the data.
+        gdat = remove_line_noise_par(gdat', flt(f), fs, 1)';
+    end
+
+    delete(p)
+    
+    if size(gdat_r, 1) > size(gdat_r, 2)
+        gdat_r = gdat_r';
+    end
+    
+    if size(gdat, 1) > size(gdat, 2)
+        gdat = gdat';
+    end
+    
+    EEGr = make_EEG(EEGr, 'dat', gdat_r, 'NotchFilter', flt, 'saved', 'no');
+    EEG = make_EEG(EEG, 'dat', gdat, 'NotchFilter', flt, 'saved', 'no');
+end
+
+
 
 
 %% Event Rejection & Channel Rejection
-bad_elecs = [];
-chan_rej = '';
-alph_chk = {};
+
+if isfield(EEGr.event, 'reject')
+    evn_rej = {EEGr.event.reject}';
+    evn_rej = evn_rej(cellfun(@(x) ~isempty(x), evn_rej));
+else
+    evn_rej = {};
+end
+
+if isfield(EEGr.reject, 'rej')
+    crej_lab = {EEGr.reject.rej}';
+    crej_lab = crej_lab(cellfun(@(x) ~isempty(x), crej_lab));
+else
+    crej_lab = {};
+end
+
+if isfield(EEGr.datreject, 'reject')
+    rdat = EEGr.datreject.reject;
+else
+    rdat = [];
+end
+
+ecrej = {};
+
 k = 0;
-if sum(~ismissing(patinf.Event_Reject)) == 0
-    patinf.Event_Reject = num2cell(patinf.Event_Reject);
-    rej_all_no = [];
-    rej_all = {};
-    num_evn_rej = 0;
-else
-    num_evn_rej = find(isnan(patinf.Event_Reject_No),1)-1;
-    rej_all_no = patinf.Event_Reject_No(1:num_evn_rej);
-    rej_all = patinf.Event_Reject(1:num_evn_rej);
-end
-
-if exist('EEG', 'var') && ~isempty(EEG.notch) 
-    flt = [EEG.notch -1];
-else
-    flt = -1;
-end
-
-EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, flt, [SUBID '_' task], task, '', ref, '');
 
 % channel/event selection & eegplot
-while true
+while eeg
     
-    prompt('rejected event/channel', evn_typ, stim_evns, rej_all_no, rej_all, chan_rej)
-
-    if k == 0 || ~all(cellfun(@(x) isempty(x), alph_chk))
-        pop_eegplot(EEG);
+%     if isempty(ecrej)
+%         pop_eegplot(EEGr);
+%         if strcmp(EEGr.ref, 'bipolar') && k == 0
+%             pop_eegplot(EEG);
+%         end
+%     end
+    
+    if k == 0
+        ecrej = prompt('ecrej header', evn, evn_idc);
+    else
+        ecrej = prompt('arrow');
     end
-
-    ecrej = prompt('channels/events to reject');
+   
     ecrej = strsplit(ecrej);
-    alph_chk = cellfun(@(x) x(isstrprop(x,'alpha')),ecrej,'uni',0);
 
     % Reject Events
-    rej_idx = cellfun(@(x) str2double(x), ecrej(2:end))';
     if  str2double(ecrej{1}) == 0
-        break
+        break      
         
-    elseif strcmpi(ecrej{1}, 'event') 
+    elseif strcmpi(ecrej{1}, 'event')      
         if strcmpi(ecrej{2}, 'contains')
-            rej_idx = find(cellfun(@(x) contains(x, ecrej{3}), evn_typ) == 1);
+            rej_idx = find(cellfun(@(x) contains(x, ecrej{3}), evn) == 1);
+        elseif strcmpi(ecrej{2}, 'replace')
+            rej_idx = [];
+            if strcmpi(ecrej{3}, 'old') && strcmpi(ecrej{4}, 'contains')
+                evn_rej(cellfun(@(x) contains(x, ecrej{5}), olevn_rej)) = [];
+            else
+                for ii = 3:length(ecrej)
+                    evn_rej(cellfun(@(x) strcmp(x, ecrej{ii}), evn_rej)) = [];
+                end
+            end
         else
+            rej_idx = [];
             for ii = 2:length(ecrej)
-                rej_idx = find(cellfun(@(x) strcmp(x, ecrej{ii}), evn_typ) == 1);
+                rej_idx = [rej_idx; find(cellfun(@(x) strcmp(x, ecrej{ii}), evn) == 1)];
             end
         end
 
         for ii = 1:length(rej_idx)
-            if sum(rej_all_no == rej_idx(ii))
-                prompt('skipping event', rej_idx(ii), evn_typ{rej_idx(ii)});
+            if sum(cellfun(@(x) strcmp(x, evn{rej_idx(ii)}), evn_rej)) > 0
+                % prompt('skipping event', evn{rej_idx(ii)});
                 rej_idx(ii) = -1;
             end
         end
         rej_idx(rej_idx == -1) = [];
-        evn_rej = evn_typ(rej_idx);
-
-        rej_all_no = [rej_all_no; rej_idx];
-        rej_all = [rej_all; evn_rej];
+        evn_rej = [evn_rej; evn(rej_idx)];
 
 
     % Reject Channels
     elseif strcmpi(ecrej{1}, 'channel')
-        cnum_rej = [];
-        for ii = 2:length(ecrej)
-            cnum_rej = [cnum_rej find(cellfun(@(x) strcmp(x,ecrej{ii}), glab_r))];
+        if strcmpi(ecrej{2}, 'replace')
+            for ii = 3:length(ecrej)
+                didx = cellfun(@(x) strcmp(x, ecrej{ii}), crej_lab);
+                gdat_r = [gdat_r; rdat(didx,:)];
+                glab_r = [glab_r, crej_lab(didx)];
+                rdat(didx,:) = [];
+                crej_lab(didx) = [];
+            end
+        
+        else
+            crej_no = [];
+            for ii = 2:length(ecrej)
+                crej_no = [crej_no find(cellfun(@(x) strcmp(x,ecrej{ii}), glab_r))];
+            end
+            [gdat_r, glab_r, rdat, crej_lab] = remove_channels(gdat_r, glab_r, crej_no, rdat, crej_lab);
         end
-        [gdat_r, glab_r, chan_rej] = remove_channels(gdat_r, glab_r, cnum_rej, chan_rej);
+        ecrej = {};
         
+    elseif strcmpi(ecrej{1}, 'view')
+        if strcmpi(ecrej{2}, 'reject') && ~isempty(crej_lab)
+            REJ = make_EEG();
+            REJ = make_EEG(REJ, 'dat', EEGr.datreject.reject, 'labels', crej_lab, 'srate', fs, 'EventIndex', evn_idc, 'EventType', evn, 'NotchFilter', flt, 'reference', ref);
+            pop_eegplot(REJ);
+        elseif strcmpi(ecrej{2}, 'excess') && ~isempty({EEGr.reject.excess})
+            elab = {EEGr.reject.excess};
+            elab = elab(cellfun(@(x) ~isempty(x), elab));
+            EX = make_EEG();
+            EX = make_EEG(EX, 'dat', EEGr.datreject.excess, 'labels', elab, 'srate', fs, 'EventIndex', evn_idc, 'EventType', evn, 'NotchFilter', flt, 'reference', ref);
+            pop_eegplot(EX);
+        end
         
+    elseif strcmpi(ecrej{1}, 'show')
+        if strcmpi(ecrej{2}, 'events')
+            prompt('rejected events', evn_rej)
+        elseif strcmpi(ecrej{2}, 'channels')
+            prompt('rejected channels', crej_lab)
+        end
+        
+    elseif strcmpi(ecrej{1}, 'help')
+        prompt('ecrej help')
+    end
+
+    EEGr = make_EEG(EEGr, 'dat', gdat_r, 'labels', glab_r, 'RejectChans', crej_lab, 'RejectChansData', rdat, 'EventIndex', evn_idc, 'EventType', evn, 'ResponseTime', rtm, 'EventReject', evn_rej, 'saved', 'no');
+    k = k+1;
+end
+
+
+%% Save Data
+
+evn_msk = ~ismember(evn,evn_rej);
+an_evn_idc = evn_idc(evn_msk);
+an_evn = evn(evn_msk);
+an_rtm = rtm(evn_msk);
+
+EEGr = make_EEG(EEGr, 'AnalysisEventIdx', an_evn_idc, 'AnalysisEventType', an_evn, 'AnalysisResponseTime', an_rtm, 'EventIndex', evn_idc, 'EventType', evn, 'ResponseTime', rtm, 'EventReject', evn_rej);
+EEG = make_EEG(EEG, 'AnalysisEventIdx', an_evn_idc, 'AnalysisEventType', an_evn, 'AnalysisResponseTime', an_rtm, 'EventIndex', evn_idc, 'EventType', evn, 'ResponseTime', rtm, 'EventReject', evn_rej);
+
+% This IF block seems redundant but I want it to automatically save a raw
+% draft if the work was built up from the REC file. This could probably be
+% made more efficient.
+if ~eeg
+    
+    EEGr = make_EEG(EEGr, 'saved', 'yes');
+    EEG = make_EEG(EEG, 'saved', 'yes');
+    sname = [df_dir subj '_' task '_' ref '_raw_dat.mat'];
+    
+    disp('  ')
+    disp('Saving...')
+    
+    if strcmp(EEGr.ref, 'bipolar')
+        save(sname, 'EEGr', 'EEG','-v7.3')
     else
-        disp('  ')
-        disp('Try again');
-        continue
+        save(sname, 'EEGr','-v7.3')
     end
-    k = k + 1;
-    EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, flt, [SUBID '_' task], task, '', ref, '');
-end
-
-
-
-
-%% Save all edits to Patient table info
-nadd = size(patinf,1) - length(rej_all);
-if nadd > 0
-    for ii = 1:nadd
-        rej_all_no = [rej_all_no; nan];
-        rej_all = [rej_all; string(nan)];
+    
+elseif user_yn('save EEG?')
+    
+    EEGr = make_EEG(EEGr, 'saved', 'yes');
+    EEG = make_EEG(EEG, 'saved', 'yes');
+    sname = [df_dir subj '_' task '_' ref '_' rsearch '_dat.mat'];
+    
+    if strcmp(EEGr.ref, 'bipolar')
+        save(sname, 'EEGr', 'EEG','-v7.3')
+    else
+        save(sname, 'EEGr','-v7.3')
     end
-    patinf.Event_Reject_No = rej_all_no;
-    patinf.Event_Reject = rej_all;
-elseif nadd < 0
-    for ii = 1:length(rej_all)
-        if ii > size(patinf,1)
-            patinf.Data_Start(ii) = nan;
-            patinf.Data_Stop(ii) = nan;
-            patinf.Good_Channels(ii) = string(nan);
-            patinf.Excess_Channels(ii) = string(nan);
-            patinf.Channel_Reject(ii) = string(nan);
-            patinf.Event_Types(ii) = string(nan);
-            patinf.Response_Time(ii) = nan;
-            patinf.Stimulus_Event(ii) = nan;
-        end
-        patinf.Event_Reject_No(ii) = rej_all_no{ii};
-        patinf.Event_Reject(ii) = rej_all{ii};
-    end
-else
-    patinf.Event_Reject_No = rej_all_no;
-    patinf.Event_Reject = rej_all;
-end
-
-chan_rej = strsplit(chan_rej, ',');
-nadd = size(patinf,1) - length(chan_rej);
-if nadd > 0
-    for ii = 1:nadd
-        chan_rej = [chan_rej string(nan)];
-    end
-    patinf.Channel_Reject = chan_rej';
-elseif nadd < 0
-    for ii = 1:length(chan_rej)
-        if ii > size(patinf,1)
-            patinf.Data_Start(ii) = nan;
-            patinf.Data_Stop(ii) = nan;
-            patinf.Good_Channels(ii) = string(nan);
-            patinf.Excess_Channels(ii) = string(nan);
-            patinf.Event_Reject_No(ii) = nan;
-            patinf.Event_Reject(ii) = string(nan);
-            patinf.Event_Types(ii) = string(nan);
-            patinf.Response_Time(ii) = nan;
-            patinf.Stimulus_Event(ii) = nan;
-        end
-        patinf.Channel_Reject(ii) = chan_rej{ii};
-    end
-else
-    patinf.Channel_Reject = chan_rej';
-end
-       
-patinf.Good_Channels = string(patinf.Good_Channels);
-glab_r_table = glab_r;
-nadd = size(patinf,1) - length(glab_r_table);
-if nadd > 0
-    for ii = 1:nadd
-        glab_r_table = [glab_r_table string(nan)];
-    end
-    patinf.Good_Channels = glab_r_table';
-elseif nadd < 0
-    for ii = 1:length(glab_r_table)
-        if ii > size(patinf,1)
-            patinf.Data_Start(ii) = nan;
-            patinf.Data_Stop(ii) = nan;
-            patinf.Excess_Channels(ii) = string(nan);
-            patinf.Channel_Reject(ii) = string(nan);
-            patinf.Event_Reject_No(ii) = nan;
-            patinf.Event_Reject(ii) = string(nan);
-            patinf.Event_Types(ii) = string(nan);
-            patinf.Response_Time(ii) = nan;
-            patinf.Stimulus_Event(ii) = nan;
-        end
-        patinf.Good_Channels(ii) = glab_r_table{ii};
-    end
-else
-    patinf.Good_Channels = glab_r_table';
-end
-
-
-
-%% FILTER OUT 60 Hz LINE NOISE (If needed)
-if ~isempty(EEG.notch)
-    flt = prompt('notch filt freq', EEG.notch(length(EEG.notch)));
-    flt = [EEG.notch flt];
-else
-    flt = prompt('notch filt freq');
-end
-
-
-if flt(end) > -1
-    p = parpool;
-    gdat_r = remove_line_noise_par(gdat_r', flt(end), fs, 1)'; %funciton written by Leon in order to notch filter the data.
-    delete(p)
-end
-
-if size(gdat_r, 1) > size(gdat_r, 2)
-    gdat_r = gdat_r';
-end
-
-EEG = make_EEG(gdat_r, glab_r, fs, stim_evns, evn_typ, flt, [SUBID '_' task], task, '', ref, '');
-
-
-
-%% Save pre-processed data, Save Excel file
-
-system('taskkill /F /IM EXCEL.EXE');
-xlswrite([df_dir xl_name],nan(100,100), task)
-writetable(patinf, [df_dir xl_name], 'Sheet', task)
-
-if ~eeg || flt(end) ~= -1
-    if user_yn('save EEG?')
-        save([df_dir SUBID '_' task '_' ref '_dat.mat'], 'EEG')
-    end
+    
 end
 
 close all
 
-if user_yn('go to fba?')
-    run('frequency_band_analysis.m')
+if user_yn('process another?')
+    run('iEEGprocessor.m')
 else
+    disp('  ')
     disp('Good-bye!')
+    disp('  ')
 end
-
-
-
-
-
 
 
 

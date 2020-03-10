@@ -1,5 +1,6 @@
 function [ddat, dlab] = bipolar_referencing (dat, lab)
 
+
     alph = cellfun(@(x) x(isstrprop(x,'alpha')),lab,'uni',0);
     numr = cellfun(@(x) str2double(x(isstrprop(x,'digit'))),lab,'uni',0);
     

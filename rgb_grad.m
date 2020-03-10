@@ -1,8 +1,8 @@
 function [r, g, b] = rgb_grad(r, g, b, rinit, ginit, binit, size)
   
-    rr = floor((255-rinit)/size)/255;
-    gr = .75*floor((255-ginit)/size)/255;
-    br = .4*floor((255-binit)/size)/255;
+    rr = .6*floor(rinit/size)/255;
+    gr = .7*floor(ginit/size)/255;
+    br = .25*floor(binit/size)/255;
 
 %     if r == 1 && g == 1
 %         binit = binit + 30;
@@ -11,22 +11,29 @@ function [r, g, b] = rgb_grad(r, g, b, rinit, ginit, binit, size)
 %         br = 0;
 %     end
     
-    if (r + rr) <= 1 && (r + rr) >= 0
-        r = (r + rr);
+    if (r - rr) <= 1 && (r - rr) >= 0
+        r = (r - rr);
     else
-        r = 1;
+        r = 0;
     end
 
-    if (g + gr) <= 1 && (g + gr) >= 0
-        g = (g + gr);
+    if (g - gr) <= 1 && (g - gr) >= 0
+        g = (g - gr);
     else
-        g = 1;
+        g = 0;
     end
 
-    if (b + br) <= 1 && (b + br) >= 0
-        b = (b + br);
+    if (b - br) <= 1 && (b - br) >= 0
+        b = (b - br);
     else
-        b = 1;
+        b = 0;
     end
 
+    
+    % To reverse colors, need to make rbg decrease quadratically
+    c1 = [rst gst bst];
+    c2 = [188 186 121];
+    c3 = [122 121 79];
+    plot(1:3, c1, 1:3, c2, 1:3, c3)
+    
 end
